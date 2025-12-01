@@ -1,14 +1,70 @@
+# Solar Photovoltaic Technology Configuration
+
 technology:
   code: "solar_pv"
   name: "Solar Photovoltaic"
   category: "solar"
-  
-financial:
-  capex_usd_per_kw: 1200.0
-  opex_usd_per_kw_year: 15.0
-  project_lifetime_years: 25
-  capacity_factor_range: [0.10, 0.30]
+  description: "Ground-mounted utility-scale solar PV"
 
-validation:
-  lcoe_usd_per_mwh: [20, 80]
-  irr_percent: [5, 25]
+  # Solar PV financial parameters
+  financial:
+    capex_usd_per_kw: 1200.0               # $1,200/kW typical for utility-scale
+    opex_usd_per_kw_year: 15.0             # $15/kW/year O&M
+    project_lifetime_years: 25              # 25-30 year typical lifetime
+    capacity_factor_range: [0.10, 0.30]    # 10-30% depending on location
+    degradation_rate_per_year: 0.005       # 0.5% per year typical
+
+    # Solar-specific costs
+    module_cost_usd_per_kw: 400.0          # PV modules
+    inverter_cost_usd_per_kw: 150.0        # Inverters
+    bos_cost_usd_per_kw: 350.0             # Balance of system
+    soft_costs_usd_per_kw: 300.0           # Permitting, interconnection, etc.
+
+  # Solar PV technical parameters
+  technical:
+    panel_efficiency: 0.20                  # 20% module efficiency
+    inverter_efficiency: 0.98               # 98% inverter efficiency
+    system_losses: 0.14                     # 14% total system losses
+    temperature_coefficient: -0.004         # -0.4% per °C above 25°C
+    availability: 0.98                      # Very high availability
+    ramp_rate_percent_per_min: 100.0       # Can ramp instantly (sun changes)
+
+  # Resource requirements (what data to fetch)
+  resource_requirements:
+    - name: "GHI"                          # Global Horizontal Irradiance
+      unit: "kWh/m2/day"
+      minimum: 3.0                         # Below this = not viable
+      optimal: 5.5                         # Above this = excellent
+      data_source: "nasa_power"
+
+    - name: "DNI"                          # Direct Normal Irradiance
+      unit: "kWh/m2/day"
+      minimum: 2.0
+      optimal: 6.0
+      data_source: "nasa_power"
+
+    - name: "temperature"
+      unit: "celsius"
+      optimal_range: [15, 25]              # Best performance range
+      data_source: "nasa_power"
+
+    - name: "cloud_cover"
+      unit: "percent"
+      data_source: "nasa_power"
+
+  # LCOE calculation specifics
+  lcoe_calculation:
+    formula: "capex_annualized_plus_opex_divided_by_annual_energy"
+    factors:
+      - degradation
+      - system_losses
+      - temperature_derating
+
+  # Validation ranges
+  validation:
+    lcoe_usd_per_mwh: [20, 80]             # Solar LCOE typically $20-80/MWh
+    irr_percent: [5, 25]                   # IRR typically 5-25%
+    capacity_factor: [0.10, 0.30]          # CF typically 10-30%
+
+  # Prompt template for LLM
+  prompt_template: "config/prompts/solar_pv_analysis.md"

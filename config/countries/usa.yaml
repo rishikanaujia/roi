@@ -1,15 +1,63 @@
+# United States Configuration
+
 country:
   code: "USA"
   name: "United States"
   currency: "USD"
-  
-financial:
-  discount_rate: 0.08
-  corporate_tax_rate: 0.21
+  timezone: "America/New_York"
 
-grid:
-  wholesale_price_usd_per_mwh: 35.0
+  # USA-specific financial parameters
+  financial:
+    discount_rate: 0.08                    # US corporate WACC
+    corporate_tax_rate: 0.21               # Federal corporate tax (21%)
+    inflation_rate: 0.025                  # US inflation target
 
-supported_technologies:
-  - solar_pv
-  - onshore_wind
+    # USA-specific: MACRS depreciation
+    depreciation:
+      method: "MACRS"
+      years: 5
+      schedule: [0.20, 0.32, 0.192, 0.1152, 0.1152, 0.0576]
+
+  # USA grid parameters
+  grid:
+    wholesale_price_usd_per_mwh: 35.0      # US average wholesale price
+    capacity_payment_usd_per_kw_year: 50.0 # Capacity market (varies by region)
+    interconnection_cost_usd_per_kw: 200.0 # Higher in US
+    ancillary_services_usd_per_mwh: 2.0    # Grid services revenue
+
+  # USA regulatory environment
+  regulatory:
+    environmental_permitting_months: 6      # NEPA process
+    construction_permitting_months: 3       # State/local permits
+    land_lease_usd_per_acre_year: 1000.0   # US land costs
+
+    # USA-specific: Federal incentives
+    federal_itc_percentage: 30.0           # Investment Tax Credit (30%)
+    production_tax_credit_usd_per_mwh: 27.5 # PTC for wind (if applicable)
+
+  # Technologies supported in USA
+  supported_technologies:
+    - solar_pv
+    - onshore_wind
+    - offshore_wind
+    - hydro
+    - geothermal
+
+  # USA-specific data sources
+  data_sources:
+    policy: "irs_dsire"                    # IRS + DSIRE database
+    resource_solar: "nrel"                 # NREL National Solar Radiation Database
+    resource_wind: "nrel_wind"             # NREL Wind Integration Database
+    grid: "eia"                            # US Energy Information Administration
+
+  # Regional variations (optional)
+  regions:
+    texas:
+      wholesale_price_usd_per_mwh: 30.0
+      capacity_payment_usd_per_kw_year: 0.0  # ERCOT has no capacity market
+    california:
+      wholesale_price_usd_per_mwh: 45.0
+      capacity_payment_usd_per_kw_year: 75.0
+    northeast:
+      wholesale_price_usd_per_mwh: 50.0
+      capacity_payment_usd_per_kw_year: 100.0

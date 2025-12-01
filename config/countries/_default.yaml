@@ -1,14 +1,37 @@
+# Default Country Configuration
+# This provides base defaults for all countries
+# Country-specific files override these values
+
 country:
   code: "DEFAULT"
   name: "Default Country"
-  
-financial:
-  discount_rate: 0.08
-  corporate_tax_rate: 0.21
+  currency: "USD"
+  timezone: "UTC"
 
-grid:
-  wholesale_price_usd_per_mwh: 40.0
+  # Financial parameters (used in LCOE/IRR calculations)
+  financial:
+    discount_rate: 0.08                    # WACC / discount rate (8%)
+    corporate_tax_rate: 0.21               # Corporate tax rate (21%)
+    inflation_rate: 0.02                   # Expected inflation (2%)
 
-supported_technologies:
-  - solar_pv
-  - onshore_wind
+  # Grid parameters
+  grid:
+    wholesale_price_usd_per_mwh: 40.0      # Wholesale electricity price
+    capacity_payment_usd_per_kw_year: 0.0  # Capacity market payment
+    interconnection_cost_usd_per_kw: 100.0 # Grid interconnection cost
+
+  # Regulatory parameters
+  regulatory:
+    environmental_permitting_months: 12     # Time for environmental permits
+    construction_permitting_months: 6       # Time for construction permits
+    land_lease_usd_per_acre_year: 500.0    # Annual land lease cost
+
+  # Supported technologies (override in country-specific files)
+  supported_technologies:
+    - solar_pv
+    - onshore_wind
+
+  # Data sources
+  data_sources:
+    policy: "default"
+    resource: "global"

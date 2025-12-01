@@ -1,0 +1,14 @@
+technology:
+  code: "solar_pv"
+  name: "Solar Photovoltaic"
+  category: "solar"
+  
+financial:
+  capex_usd_per_kw: 1200.0
+  opex_usd_per_kw_year: 15.0
+  project_lifetime_years: 25
+  capacity_factor_range: [0.10, 0.30]
+
+validation:
+  lcoe_usd_per_mwh: [20, 80]
+  irr_percent: [5, 25]

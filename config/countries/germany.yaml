@@ -1,0 +1,16 @@
+country:
+  code: "DEU"
+  name: "Germany"
+  currency: "EUR"
+  
+financial:
+  discount_rate: 0.06
+  corporate_tax_rate: 0.30
+
+grid:
+  wholesale_price_usd_per_mwh: 45.0
+
+supported_technologies:
+  - solar_pv
+  - onshore_wind
+  - offshore_wind

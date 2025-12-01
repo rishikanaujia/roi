@@ -1,0 +1,14 @@
+country:
+  code: "DEFAULT"
+  name: "Default Country"
+  
+financial:
+  discount_rate: 0.08
+  corporate_tax_rate: 0.21
+
+grid:
+  wholesale_price_usd_per_mwh: 40.0
+
+supported_technologies:
+  - solar_pv
+  - onshore_wind

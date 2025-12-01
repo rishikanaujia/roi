@@ -1,0 +1,8 @@
+technology:
+  code: "default"
+  name: "Default Technology"
+  
+financial:
+  capex_usd_per_kw: 1000.0
+  opex_usd_per_kw_year: 10.0
+  project_lifetime_years: 25

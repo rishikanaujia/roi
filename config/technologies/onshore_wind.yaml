@@ -1,0 +1,14 @@
+technology:
+  code: "onshore_wind"
+  name: "Onshore Wind"
+  category: "wind"
+  
+financial:
+  capex_usd_per_kw: 1500.0
+  opex_usd_per_kw_year: 40.0
+  project_lifetime_years: 25
+  capacity_factor_range: [0.25, 0.45]
+
+validation:
+  lcoe_usd_per_mwh: [30, 90]
+  irr_percent: [5, 20]

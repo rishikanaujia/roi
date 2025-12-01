@@ -28,6 +28,8 @@ Example:
 """
 
 from typing import Dict, Any, Type
+
+from src.agents.research.policy_handlers.india_policy_handler import IndiaPolicyHandler
 from src.core.interfaces.policy_handler_interface import IPolicyHandler
 from src.agents.research.policy_handlers.base_policy_handler import BasePolicyHandler
 from src.agents.research.policy_handlers.usa_policy_handler import USAPolicyHandler
@@ -51,7 +53,7 @@ class PolicyHandlerFactory:
         "DEU": GermanyPolicyHandler,
         # Add more countries here as you scale:
         # "CHN": ChinaPolicyHandler,
-        # "IND": IndiaPolicyHandler,
+        "IND": IndiaPolicyHandler,
         # "BRA": BrazilPolicyHandler,
         # "AUS": AustraliaPolicyHandler,
         # etc.

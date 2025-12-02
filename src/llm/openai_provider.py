@@ -134,33 +134,56 @@ class OpenAIProvider(ILLMProvider):
             self,
             analysis_data: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """
-        Generate investment insights using GPT-4.
-
-        This creates MUCH better insights than the mock provider!
-
-        Args:
-            analysis_data: Complete analysis results
-
-        Returns:
-            Dictionary with AI-generated insights
-        """
+        """Generate investment insights using GPT-4."""
         try:
             self.logger.info("Generating investment insights with GPT-4...")
 
-            # Extract metrics
-            project = analysis_data.get('project', {})
-            lcoe = analysis_data.get('lcoe', 0)
-            irr = analysis_data.get('irr', 0)
-            npv = analysis_data.get('npv', 0)
-            capacity_factor = analysis_data.get('capacity_factor', 0)
-            recommendation = analysis_data.get('recommendation', 'UNKNOWN')
+            # Extract metrics - handle BOTH flat and nested structures
+            # Check if we have flat structure (from formatted result)
+            if 'lcoe' in analysis_data:
+                # Flat structure (preferred)
+                lcoe = analysis_data.get('lcoe', 0)
+                irr = analysis_data.get('irr', 0)
+                npv = analysis_data.get('npv', 0)
+                capacity_factor = analysis_data.get('capacity_factor', 0)
+                recommendation = analysis_data.get('recommendation', 'UNKNOWN')
+                project = analysis_data.get('project', {})
+                resource_summary = analysis_data.get('resource_summary', {})
+                policy_summary = analysis_data.get('policy_summary', {})
+            else:
+                # Nested structure (from raw analysis result)
+                financial = analysis_data.get('financial_metrics', {})
+                lcoe = financial.get('lcoe_usd_per_mwh', 0)
+                irr = financial.get('irr_percent', 0)
+                npv = financial.get('npv_usd', 0)
+                capacity_factor = analysis_data.get('capacity_factor', 0)
 
+                viability = analysis_data.get('viability_assessment', {})
+                recommendation = viability.get('recommendation', 'UNKNOWN')
+
+                # Project info from analysis context
+                project = {
+                    'technology': analysis_data.get('technology', 'renewable energy'),
+                    'country': analysis_data.get('country', 'this region'),
+                    'capacity_mw': analysis_data.get('capacity_mw', 0)
+                }
+
+                # These won't be in raw analysis result
+                resource_summary = {}
+                policy_summary = {}
+
+            # DEBUG: Log what we extracted
+            self.logger.info(
+                f"Extracted metrics - LCOE: ${lcoe:.2f}/MWh, IRR: {irr:.1f}%, "
+                f"CF: {capacity_factor * 100:.1f}%"
+            )
+
+            # Extract project info
             technology = project.get('technology', 'renewable energy')
             country = project.get('country', 'this region')
             capacity_mw = project.get('capacity_mw', 0)
 
-            # Get resource and policy data if available
+            # Get resource and policy data
             resource_summary = analysis_data.get('resource_summary', {})
             policy_summary = analysis_data.get('policy_summary', {})
 
@@ -171,6 +194,8 @@ class OpenAIProvider(ILLMProvider):
                 resource_summary, policy_summary
             )
 
+            # DEBUG: Log a snippet of the prompt
+            self.logger.info(f"Prompt contains: LCOE ${lcoe:.2f}/MWh, IRR {irr:.1f}%")
             messages = [
                 {
                     "role": "system",

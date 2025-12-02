@@ -1,13 +1,10 @@
 """
 API Routes - Endpoint Definitions
 
-Defines all API endpoints:
-- POST /analyze - Analyze opportunity
-- GET /health - Health check
-- GET /supported - Get supported options
+NOW USING REAL LLM FROM APP STATE!
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Request
 from typing import Dict, Any
 
 from src.api.models import (
@@ -24,9 +21,6 @@ from src.agents.research.resource_fetchers.factory import ResourceFetcherFactory
 # Create router
 router = APIRouter(prefix="/api/v1", tags=["Analysis"])
 
-# Create orchestrator (singleton)
-orchestrator = WorkflowOrchestrator()
-
 
 @router.post(
     "/analyze",
@@ -34,12 +28,22 @@ orchestrator = WorkflowOrchestrator()
     status_code=status.HTTP_200_OK,
     summary="Analyze Renewable Energy Opportunity",
     description="""
-    Analyze a renewable energy investment opportunity.
+    Analyze a renewable energy investment opportunity with AI-powered insights.
 
     This endpoint orchestrates:
-    1. Research Agent - Fetches policy and resource data
+    1. Research Agent - Fetches REAL NASA satellite data
     2. Analysis Agent - Calculates financial metrics (LCOE, IRR, NPV)
-    3. Returns investment-grade analysis with recommendation
+    3. AI Agent - Generates professional investment insights (GPT-4 if configured)
+    4. Returns investment-grade analysis with recommendation
+
+    **Data Sources:**
+    - NASA POWER: 30-year satellite climatology (free, global)
+    - Policy databases: Country-specific incentives and regulations
+
+    **AI Provider:**
+    - Configured via environment: LLM_PROVIDER, OPENAI_API_KEY
+    - Default: Mock (basic insights)
+    - With GPT-4: Investment-grade insights (~$0.006/analysis)
 
     **Supported Countries:** USA, DEU (Germany), IND (India)
     **Supported Technologies:** solar_pv, onshore_wind
@@ -61,21 +65,30 @@ orchestrator = WorkflowOrchestrator()
         500: {"description": "Internal server error", "model": ErrorResponse}
     }
 )
-async def analyze_opportunity(request: AnalyzeRequest):
+async def analyze_opportunity(request_data: AnalyzeRequest, request: Request):
     """
     Analyze a renewable energy opportunity.
 
-    Returns complete financial analysis with recommendation.
+    NOW USES REAL LLM FROM APP STATE!
     """
     try:
+        # Get LLM provider from app state
+        llm_provider = request.app.state.llm_provider
+
+        # Create orchestrator with LLM provider
+        orchestrator = WorkflowOrchestrator(
+            llm_provider=llm_provider,
+            enable_ai_insights=True
+        )
+
         # Call orchestrator
         result = await orchestrator.analyze_opportunity(
-            country=request.country,
-            technology=request.technology,
-            latitude=request.latitude,
-            longitude=request.longitude,
-            capacity_mw=request.capacity_mw,
-            state=request.state
+            country=request_data.country,
+            technology=request_data.technology,
+            latitude=request_data.latitude,
+            longitude=request_data.longitude,
+            capacity_mw=request_data.capacity_mw,
+            state=request_data.state
         )
 
         return result
@@ -102,21 +115,39 @@ async def analyze_opportunity(request: AnalyzeRequest):
     summary="Health Check",
     description="Check API health and get supported options"
 )
-async def health_check():
+async def health_check(request: Request):
     """
-    Health check endpoint.
-
-    Returns service status and supported options.
+    Health check endpoint with AI provider info.
     """
     countries = PolicyHandlerFactory.get_supported_countries()
     technologies = ResourceFetcherFactory.get_supported_technologies()
 
-    return {
+    # Get LLM provider info
+    llm_provider = request.app.state.llm_provider
+    ai_provider_name = llm_provider.get_provider_name()
+
+    response = {
         "status": "healthy",
         "version": "1.0.0",
+        "ai_provider": ai_provider_name,
+        "data_source": "NASA POWER (30-year satellite climatology)",
         "supported_countries": countries,
         "supported_technologies": technologies
     }
+
+    # Add cost info if using paid provider
+    if hasattr(llm_provider, 'get_usage_stats'):
+        try:
+            stats = llm_provider.get_usage_stats()
+            response["ai_usage"] = {
+                "total_requests": stats.get('total_requests', 0),
+                "total_cost_usd": stats.get('estimated_cost_usd', 0),
+                "cost_per_request": stats.get('cost_per_request', 0)
+            }
+        except:
+            pass
+
+    return response
 
 
 @router.get(

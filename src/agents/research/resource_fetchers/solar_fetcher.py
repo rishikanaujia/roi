@@ -76,15 +76,24 @@ class SolarResourceFetcher(BaseResourceFetcher):
             f"Fetching REAL solar resource data for ({latitude:.2f}, {longitude:.2f})"
         )
 
-        # Try NREL first (best for USA)
+        # Use NASA POWER (reliable, global coverage)
+        # NOTE: NREL requires paid API key for production data
+        # Uncomment below when you have a production NREL key
+        """
         if self._is_usa_location(latitude, longitude) and self.nrel_client.is_available():
             try:
                 self.logger.info("Attempting NREL data fetch (USA location)")
-                return await self._fetch_from_nrel(latitude, longitude)
+                nrel_data = await self._fetch_from_nrel(latitude, longitude)
+                # Validate NREL data (sometimes returns zeros)
+                if nrel_data['resource_data']['avg_ghi_kwh_m2_day'] > 0:
+                    return nrel_data
+                else:
+                    self.logger.warning("NREL returned zero data, using NASA POWER")
             except APIClientError as e:
                 self.logger.warning(f"NREL failed: {str(e)}, falling back to NASA POWER")
+        """
 
-        # Fallback to NASA POWER (global, always works)
+        # Use NASA POWER (free, reliable, global)
         return await self._fetch_from_nasa(latitude, longitude)
 
     async def _fetch_from_nasa(

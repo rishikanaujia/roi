@@ -190,3 +190,239 @@ async def get_supported_options():
         ],
         "total_combinations": len(countries) * len(technologies)
     }
+
+
+@router.post(
+    "/analyze/batch",
+    status_code=status.HTTP_200_OK,
+    summary="Batch Analyze Multiple Opportunities",
+    description="""
+    Analyze multiple renewable energy opportunities IN PARALLEL.
+
+    Perfect for comparing opportunities across different:
+    - Countries (USA vs India vs Germany)
+    - Technologies (Solar vs Wind)
+    - Locations (different coordinates)
+
+    **Key Features:**
+    - Runs analyses in parallel (much faster than sequential!)
+    - Returns comparison summary
+    - All benefit from real NASA data + GPT-4 insights
+
+    **Example Request:**
+```json
+    {
+        "analyses": [
+            {
+                "name": "West Texas Solar",
+                "country": "USA",
+                "technology": "solar_pv",
+                "latitude": 31.99,
+                "longitude": -102.07,
+                "capacity_mw": 100
+            },
+            {
+                "name": "Gujarat Solar",
+                "country": "IND",
+                "technology": "solar_pv",
+                "latitude": 23.0,
+                "longitude": 72.0,
+                "capacity_mw": 100
+            },
+            {
+                "name": "Germany Wind",
+                "country": "DEU",
+                "technology": "onshore_wind",
+                "latitude": 54.0,
+                "longitude": 8.0,
+                "capacity_mw": 150
+            }
+        ]
+    }
+```
+
+    **Performance:**
+    - Sequential: 3 analyses × 13s = 39 seconds
+    - Parallel: ~15 seconds (3x faster!)
+    """,
+    responses={
+        200: {"description": "Successful batch analysis"},
+        400: {"description": "Invalid request"},
+        500: {"description": "Internal server error"}
+    }
+)
+async def analyze_batch(batch_request: Dict[str, Any], request: Request):
+    """
+    Analyze multiple opportunities in parallel.
+
+    This runs all analyses simultaneously using asyncio.gather(),
+    making it much faster than sequential processing!
+    """
+    import asyncio
+    from datetime import datetime
+
+    try:
+        # Extract analyses list
+        analyses = batch_request.get('analyses', [])
+
+        if not analyses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No analyses provided. Include 'analyses' array in request body."
+            )
+
+        if len(analyses) > 10:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Maximum 10 analyses per batch request."
+            )
+
+        # Get LLM provider from app state
+        llm_provider = request.app.state.llm_provider
+
+        # Create orchestrator
+        orchestrator = WorkflowOrchestrator(
+            llm_provider=llm_provider,
+            enable_ai_insights=True
+        )
+
+        # Define async analysis function
+        async def analyze_one(analysis_request: Dict[str, Any]) -> Dict[str, Any]:
+            """Analyze one opportunity."""
+            try:
+                name = analysis_request.get('name', 'Unnamed Project')
+                result = await orchestrator.analyze_opportunity(
+                    country=analysis_request['country'],
+                    technology=analysis_request['technology'],
+                    latitude=analysis_request['latitude'],
+                    longitude=analysis_request['longitude'],
+                    capacity_mw=analysis_request.get('capacity_mw', 100),
+                    state=analysis_request.get('state')
+                )
+                result['name'] = name
+                result['success'] = True
+                return result
+            except Exception as e:
+                return {
+                    'name': analysis_request.get('name', 'Unnamed Project'),
+                    'success': False,
+                    'error': str(e),
+                    'country': analysis_request.get('country'),
+                    'technology': analysis_request.get('technology')
+                }
+
+        # Track timing
+        start_time = datetime.now()
+
+        # Run all analyses in parallel!
+        results = await asyncio.gather(*[analyze_one(req) for req in analyses])
+
+        # Calculate total time
+        total_time = (datetime.now() - start_time).total_seconds()
+
+        # Separate successful and failed analyses
+        successful = [r for r in results if r.get('success', False)]
+        failed = [r for r in results if not r.get('success', False)]
+
+        # Create comparison summary
+        comparison = _create_comparison_summary(successful)
+
+        # Build response
+        response = {
+            'total_analyses': len(analyses),
+            'successful': len(successful),
+            'failed': len(failed),
+            'total_time_seconds': round(total_time, 2),
+            'avg_time_per_analysis': round(total_time / len(analyses), 2) if analyses else 0,
+            'comparison_summary': comparison,
+            'detailed_results': successful,
+            'errors': failed if failed else None
+        }
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Batch analysis failed: {str(e)}"
+        )
+
+
+def _create_comparison_summary(results: list) -> Dict[str, Any]:
+    """
+    Create comparison summary from multiple results.
+
+    Args:
+        results: List of analysis results
+
+    Returns:
+        Comparison summary with rankings and insights
+    """
+    if not results:
+        return {}
+
+    # Extract key metrics
+    projects = []
+    for result in results:
+        projects.append({
+            'name': result.get('name', 'Unknown'),
+            'country': result['project']['country'],
+            'technology': result['project']['technology'],
+            'lcoe': result['lcoe'],
+            'irr': result['irr'],
+            'npv': result['npv'],
+            'capacity_factor': result['capacity_factor'],
+            'recommendation': result['recommendation'],
+            'resource_quality': result['resource_summary'].get('quality', 'unknown')
+        })
+
+    # Sort by IRR (descending - best first)
+    by_irr = sorted(projects, key=lambda x: x['irr'], reverse=True)
+
+    # Sort by LCOE (ascending - lowest first)
+    by_lcoe = sorted(projects, key=lambda x: x['lcoe'])
+
+    # Sort by capacity factor (descending - best first)
+    by_cf = sorted(projects, key=lambda x: x['capacity_factor'], reverse=True)
+
+    # Find best overall
+    viable_projects = [p for p in projects if 'VIABLE' in p['recommendation']]
+    best_overall = by_irr[0] if by_irr else None
+
+    return {
+        'total_projects': len(projects),
+        'viable_projects': len(viable_projects),
+        'best_irr': {
+            'project': by_irr[0]['name'],
+            'value': by_irr[0]['irr']
+        } if by_irr else None,
+        'lowest_lcoe': {
+            'project': by_lcoe[0]['name'],
+            'value': by_lcoe[0]['lcoe']
+        } if by_lcoe else None,
+        'highest_capacity_factor': {
+            'project': by_cf[0]['name'],
+            'value': by_cf[0]['capacity_factor'] * 100
+        } if by_cf else None,
+        'recommended_project': viable_projects[0]['name'] if viable_projects else None,
+        'rankings': {
+            'by_irr': [{'rank': i + 1, 'name': p['name'], 'irr': p['irr']} for i, p in enumerate(by_irr[:5])],
+            'by_lcoe': [{'rank': i + 1, 'name': p['name'], 'lcoe': p['lcoe']} for i, p in enumerate(by_lcoe[:5])],
+            'by_capacity_factor': [{'rank': i + 1, 'name': p['name'], 'cf': round(p['capacity_factor'] * 100, 1)} for
+                                   i, p in enumerate(by_cf[:5])]
+        },
+        'comparison_table': [
+            {
+                'name': p['name'],
+                'country': p['country'],
+                'technology': p['technology'],
+                'lcoe': round(p['lcoe'], 2),
+                'irr': round(p['irr'], 1),
+                'capacity_factor': round(p['capacity_factor'] * 100, 1),
+                'recommendation': p['recommendation']
+            }
+            for p in projects
+        ]
+    }

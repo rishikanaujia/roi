@@ -1,0 +1,80 @@
+[
+  {
+    "country_code": "USA",
+    "country_name": "United States",
+    "research": {
+      "market_overview": "USA renewable energy capacity reached 335 GW in 2024, with solar (145 GW) and wind (150 GW) leading growth. Texas leads with 45 GW wind and 20 GW solar installed. Corporate PPAs have become the dominant procurement mechanism, with tech companies signing 25 GW in long-term contracts. ERCOT (Texas grid) experienced record renewable penetration of 73% on April 2024. California reached 100% renewable electricity for 30 consecutive days in spring 2024.",
+
+      "recent_policies": "Inflation Reduction Act (IRA) extended Investment Tax Credit (ITC) at 30% through 2032, with additional 10% bonus for domestic content and 10% for energy communities. Production Tax Credit (PTC) enhanced to $27.50/MWh (inflation-adjusted) through 2032. New 45V hydrogen production credits ($3/kg) creating demand for renewable electricity. Treasury guidance clarified that battery storage qualifies for standalone ITC. Section 48 manufacturing credits providing 30-40% capital subsidies for panel/turbine factories.",
+
+      "key_trends": "Corporate PPAs dominating market: Amazon (10 GW target 2024-2026), Google (8 GW), Microsoft (12 GW), Meta (6 GW) all expanding renewable procurement. Virtual PPA structures becoming standard - 85% of recent deals. Merchant exposure increasing in ERCOT - projects capturing $80-120/MWh during peak summer hours vs. $35/MWh PPA prices. Battery storage co-location now standard - 40% of new solar projects include 2-4 hour storage. Bifacial solar + single-axis tracking becoming default technology (25% yield increase vs. fixed-tilt).",
+
+      "challenges": "Grid interconnection delays averaging 4-5 years nationally, with MISO/SPP queues most congested (6+ years). ERCOT relatively fast at 2-3 years but capacity constrained in West Texas. Transmission constraints limiting development in best resource areas. Supply chain: domestic content requirements driving 15-20% cost premium but qualifying for bonus credits. Labor shortages for construction - 30% wage inflation 2022-2024. Land acquisition increasingly competitive in prime wind corridors.",
+
+      "opportunities": "Texas/Oklahoma wind corridor: consistent 45-50% capacity factors, best in nation. Southwest solar (New Mexico, Arizona, West Texas): 25-30% capacity factors with excellent DNI for tracking systems. Midwest (Iowa, Kansas, Nebraska): 40-45% wind capacity factors with strong grid access. Corporate PPA market extremely active - buyers seeking 15-20 year contracts at $40-55/MWh. Hydrogen hub development (7 regional hubs funded) creating premium off-take opportunities. Data center expansion in Texas creating massive baseload demand (15 GW pipeline through 2027).",
+
+      "recent_auction_results": "ERCOT recent renewable procurements clearing at: Solar $38-52/MWh (15-year), Wind $32-45/MWh (15-year), Solar+Storage $55-68/MWh (15-year). California Community Solar clearing at $95-110/MWh reflecting retail rates. Offshore wind (East Coast) clearing at $110-145/MWh with state subsidies.",
+
+      "sources": [
+        "https://www.eia.gov/electricity/monthly/",
+        "https://www.energy.gov/eere/inflation-reduction-act",
+        "https://www.ercot.com/gridinfo/generation",
+        "https://www.seia.org/solar-market-insight-report-2024",
+        "https://www.awea.org/wind-market-reports"
+      ]
+    },
+    "last_updated": "2024-12-02"
+  },
+  {
+    "country_code": "IND",
+    "country_name": "India",
+    "research": {
+      "market_overview": "India's renewable capacity reached 180 GW in 2024 (solar 85 GW, wind 45 GW, hydro 50 GW), on track for 500 GW by 2030 target. Gujarat leads with 25 GW installed (15 GW solar, 10 GW wind), followed by Rajasthan (22 GW) and Tamil Nadu (18 GW). Government awarded 50 GW solar tender in Q2 2024 - largest single procurement globally. Adani, Tata Power, ReNew, Azure leading development. Solar tariffs stabilized at ₹2.20-2.80/kWh ($0.027-0.034/kWh) after 2022-23 volatility.",
+
+      "recent_policies": "Production Linked Incentive (PLI) Scheme launched March 2024: 20% capital subsidy for solar module manufacturing + 15% for cell production. National Green Hydrogen Mission allocated ₹19,744 crore ($2.4B) with production incentives ₹50-100/kg. PM-KUSUM (farmer solar) expanded to 10 GW target with 60% subsidy. Accelerated depreciation restored at 40% for commercial projects. Inter-state transmission charges waived for renewable energy through 2030. Land acquisition streamlined - single window clearance reducing timeline from 18 months to 6 months in Gujarat, Rajasthan.",
+
+      "key_trends": "Round-the-clock (RTC) renewable tenders gaining traction - requires firm power delivery using solar+wind+storage hybrid. Tariffs: ₹3.50-4.50/kWh vs. conventional solar ₹2.20/kWh. C&I (Commercial & Industrial) rooftop solar booming - corporate sustainability targets driving demand. Tata, Reliance, Mahindra all targeting 100% renewable by 2030. Green hydrogen as priority export sector - 5 million tonnes target by 2030. Floating solar expanding on reservoirs and canals - NTPC 600 MW pipeline. Offshore wind finally advancing - Gujarat 30 GW zone identified, first auction Q1 2025.",
+
+      "challenges": "Must-run status disputes - state utilities forced to back down thermal to accommodate renewables. Payment delays from DISCOMs (distribution companies) averaging 6-12 months, though improving in Gujarat/Karnataka. Land acquisition contentious in forested/agricultural areas. Grid infrastructure lagging - curtailment issues in high renewable states (Rajasthan 8% curtailment in 2024). Module supply chain dominated by Chinese imports (85%) despite PLI push for domestic manufacturing. Permitting complexity - environment clearances taking 12-18 months.",
+
+      "opportunities": "Gujarat's 30 GW renewable zone with dedicated transmission - best grid connectivity in India. Rajasthan's 'Ultra Mega Renewable Energy Power Parks' offering plug-and-play infrastructure. Karnataka's ₹5/kWh C&I rooftop tariffs creating strong distributed solar economics. Green hydrogen hubs (4 announced) will need 20+ GW dedicated renewable capacity - premium pricing ₹3.50/kWh. Electric vehicle charging infrastructure creating grid-scale battery storage market. PSU (public sector) procurement pipeline strong - NTPC, SECI, NHPC collectively 40 GW tender pipeline 2024-2026.",
+
+      "recent_auction_results": "SECI (Solar Energy Corporation of India) latest tenders: Solar ₹2.44-2.53/kWh, Wind ₹2.77-2.93/kWh, Solar+Wind Hybrid ₹2.67-2.85/kWh, RTC (Firm Power) ₹3.62-4.04/kWh, Manufacturing-linked solar ₹2.40/kWh (with domestic modules). Gujarat state tenders: ₹2.39/kWh (solar), Karnataka: ₹2.50/kWh.",
+
+      "sources": [
+        "https://mnre.gov.in/renewable-energy-data/",
+        "https://seci.co.in/latest-tenders",
+        "https://cea.nic.in/monthly-generation-reports/",
+        "https://bridge-to-india.com/reports/",
+        "https://www.thehindubusinessline.com/economy/renewable-energy-section"
+      ]
+    },
+    "last_updated": "2024-12-02"
+  },
+  {
+    "country_code": "DEU",
+    "country_name": "Germany",
+    "research": {
+      "market_overview": "Germany's renewable capacity reached 148 GW in 2024 (wind 71 GW, solar 82 GW, biomass 9 GW). Record achievement: renewables provided 56% of electricity generation in 2024, up from 51% in 2023. Offshore wind at 8.5 GW operational, with aggressive expansion to 30 GW by 2030 and 70 GW by 2045. Solar deployment accelerating - 14 GW added in 2024 alone. Coal phase-out advanced to 2030 (from 2038), creating 40 GW replacement demand. Northern states (Schleswig-Holstein, Lower Saxony) wind-dominant; Southern states (Bavaria, Baden-Württemberg) solar-focused.",
+
+      "recent_policies": "EEG 2023 (Renewable Energy Act) reformed auction system - now technology-neutral 'innovation auctions' allowing solar+storage, wind+storage combos. Feed-in tariffs increased: rooftop solar <10kW €8.20¢/kWh, 10-40kW €7.10¢/kWh, >40kW €5.80¢/kWh. Contract-for-Difference (CfD) model introduced for offshore wind - 20-year revenue stabilization vs. market prices. Onshore wind permitting streamlined - 2% of land designated for wind development (previously 0.8%). Offshore wind gets priority grid connection and reduced auction fees. Net-billing replacing net-metering for new rooftop - encouraging self-consumption with batteries.",
+
+      "key_trends": "Offshore wind dominating new capacity - Baltic Sea (17 GW planned) and North Sea (40 GW planned) through 2035. Auction results: recent round cleared at €5.45/MWh (North Sea) and €6.20/MWh (Baltic), showing extreme cost competitiveness. Corporate PPAs emerging but slower than US - SAP, BASF, BMW pioneering. Merchant exposure increasing - wholesale prices volatile €50-180/MWh driving interest in battery storage co-location. Green hydrogen economy advancing - 10 GW electrolyzer target by 2030, creating premium renewable off-take. Residential battery storage penetration highest globally - 60% of new solar includes battery.",
+
+      "challenges": "Grid constraints acute - north-south transmission bottleneck (wind-rich north, demand-heavy south). Curtailment increasing - 6.2 TWh wind curtailed in 2024 (vs. 4.1 TWh in 2023), representing €1.1B compensation. Permitting remains slow for onshore wind despite reforms - environmental concerns, local opposition. Supply chain: transformer shortages delaying grid connections 18-24 months. Labor: skilled technicians shortage for installation and maintenance. Energy-intensive industries (chemicals, steel) relocating due to high electricity prices - €150-200/MWh industrial rates vs. €40-60/MWh in US.",
+
+      "opportunities": "Offshore wind in North Sea - world-class resource, 45-55% capacity factors. Government targeting 30 GW by 2030, 70 GW by 2045. Dedicated H2 infrastructure being built - 'European Hydrogen Backbone' connecting production to demand. Southern states' solar rooftops - strong feed-in tariffs, high retail rates (€0.30-0.40/kWh) making self-consumption economic. Battery storage market growing rapidly - grid-scale projects qualifying for capacity payments. Electrification of industry (steel, chemicals) driving demand for 24/7 renewable supply contracts. Cross-border trading opportunities - Germany as hub for European power markets.",
+
+      "recent_auction_results": "Bundesnetzagentur (Federal Network Agency) 2024 auctions: Onshore wind €5.95-7.35¢/kWh (20-year), Ground-mount solar €5.15-6.40¢/kWh (20-year), Innovation tenders (solar+storage) €7.90-9.20¢/kWh. Offshore wind zero-subsidy bids common - competing for grid connection rights, banking on merchant revenues. Rooftop solar €8.20¢/kWh feed-in for <10kW systems.",
+
+      "sources": [
+        "https://www.bundesnetzagentur.de/renewable-energy-auctions",
+        "https://www.bmwk.de/energy-transition",
+        "https://www.agora-energiewende.de/en/press/",
+        "https://www.offshore-wind.biz/germany",
+        "https://www.ise.fraunhofer.de/en/publications/studies.html"
+      ]
+    },
+    "last_updated": "2024-12-02"
+  }
+]

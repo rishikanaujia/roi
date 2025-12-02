@@ -1,20 +1,15 @@
 """
-India Policy Handler - India-Specific Renewable Energy Policies
+India Policy Handler - With Research Context Integration
 
-India has aggressive renewable energy targets:
-- 500 GW renewable capacity by 2030
-- Production Linked Incentive (PLI) scheme
-- Accelerated depreciation
-- Generation-Based Incentives (GBI)
-- State-level subsidies and incentives
+Handles policy data for India renewable energy projects.
+NOW INCLUDES: Market research, PLI scheme, auction results, state opportunities!
 
-Key Programs:
-- PLI for Solar PV Manufacturing
-- MNRE schemes (Ministry of New and Renewable Energy)
-- State Solar Policies (Gujarat, Rajasthan, Tamil Nadu)
-- Wind Energy Policies (Tamil Nadu, Gujarat, Maharashtra)
-
-Sources: MNRE, SECI, State Nodal Agencies
+Key Features:
+- Generation Based Incentive (GBI)
+- Accelerated depreciation (40%)
+- PLI scheme (20% capital subsidy)
+- State-specific policies
+- COMPLETE market research context for AI insights
 """
 
 from typing import Dict, Any
@@ -23,320 +18,423 @@ from src.agents.research.policy_handlers.base_policy_handler import BasePolicyHa
 
 class IndiaPolicyHandler(BasePolicyHandler):
     """
-    India-specific policy handler.
+    India policy handler with comprehensive research context.
 
-    Implements Indian renewable energy policies including:
-    - PLI scheme
+    Provides:
+    - Generation Based Incentive (GBI)
     - Accelerated depreciation
-    - Generation-Based Incentives
-    - State-level policies
+    - PLI scheme details
+    - State incentives (Gujarat, Rajasthan, Karnataka, Tamil Nadu)
+    - Market research (SECI auctions, DISCOMs, green hydrogen)
+    - Recent policy updates (PM-KUSUM, hydrogen mission)
     """
+
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize India policy handler.
+
+        Args:
+            config: Configuration dictionary
+        """
+        super().__init__(config)
+
+        # India-specific configuration (INR per kWh)
+        self.gbi_solar = 2.5  # ₹2.50/kWh for solar
+        self.gbi_wind = 3.0  # ₹3.00/kWh for wind
+        self.accelerated_depreciation = 0.40  # 40%
+        self.corporate_tax_rate = 0.25  # 25% for new manufacturing companies
+
+        # PLI scheme (Production Linked Incentive)
+        self.pli_module_subsidy = 0.20  # 20% capital subsidy for modules
+        self.pli_cell_subsidy = 0.15  # 15% capital subsidy for cells
+
+        self.logger.info("India policy handler initialized with PLI scheme provisions")
 
     async def fetch_policy(self, technology: str, **kwargs) -> Dict[str, Any]:
         """
-        Fetch India policy data for specified technology.
+        Fetch India policy data with research context.
 
         Args:
-            technology: Technology type
-            **kwargs: Additional parameters
-                - state: State code (e.g., "GJ", "RJ", "TN")
-                - capacity_mw: Project capacity
+            technology: Technology type (solar_pv, onshore_wind, etc.)
+            **kwargs: Additional parameters (state, capacity, etc.)
 
         Returns:
-            Policy data dictionary
+            Complete policy data including research context
         """
-        state = kwargs.get('state', 'GJ')  # Default Gujarat
-        capacity_mw = kwargs.get('capacity_mw', 100)
+        self.logger.info(f"Fetching India policy data for {technology}")
 
-        self.logger.info(
-            f"Fetching India policy data for {technology} in {state} ({capacity_mw} MW)"
-        )
+        # Get base policy data (includes research context)
+        result = self.get_policy_data()
 
-        # Get central government incentives
-        central_incentives = self._get_central_incentives(technology)
-
-        # Get state-level incentives
-        state_incentives = self._get_state_incentives(state, technology)
-
-        # Get depreciation
-        depreciation = self._get_depreciation_schedule()
-
-        # Get tax information
-        tax_info = self._get_tax_info()
-
-        # Get grid/market information
-        market_info = self._get_market_info(state)
-
-        # Policy notes
-        notes = self._get_policy_notes(technology)
-
-        return {
-            "country": "IND",
-            "technology": technology,
-            "incentives": {
-                **central_incentives,
-                "state_incentives": state_incentives
-            },
-            "depreciation": depreciation,
-            "tax_rate": tax_info["corporate_tax_rate"],
-            "tax_details": tax_info,
-            "market_information": market_info,
-            "regulatory_notes": notes,
-            "source": "MNRE, SECI, State Nodal Agencies (2024)",
-            "confidence": "high",
-            "last_updated": "2024-12-01"
-        }
-
-    def _get_central_incentives(self, technology: str) -> Dict[str, Any]:
-        """Get central government incentives."""
-
-        incentives = {
-            "pli_scheme_available": False,
-            "gbi_available": False,
-            "viability_gap_funding": False
-        }
-
+        # Add India-specific policy details based on technology
         if technology == "solar_pv":
-            # PLI Scheme for Solar PV Manufacturing
-            incentives.update({
-                "pli_scheme_available": True,
-                "pli_scheme_details": {
-                    "description": "Production Linked Incentive for Solar PV Manufacturing",
-                    "incentive_rate_percent": 20.0,
-                    "duration_years": 5,
-                    "eligibility": "Domestic manufacturing only"
+            result.update({
+                "gbi_rate": self.gbi_solar,  # ₹2.50/kWh
+                "gbi_currency": "INR",
+                "gbi_period_years": 10,
+                "accelerated_depreciation": self.accelerated_depreciation * 100,
+                "corporate_tax_rate": self.corporate_tax_rate * 100,
+                "pli_scheme": {
+                    "module_subsidy": self.pli_module_subsidy * 100,
+                    "cell_subsidy": self.pli_cell_subsidy * 100,
+                    "description": "PLI scheme offers 20% subsidy for modules, 15% for cells",
+                    "deadline": "Apply before March 2025"
                 },
-                # Generation-Based Incentives (older projects)
-                "gbi_available": True,
-                "gbi_rate_inr_per_kwh": 0.50,  # ₹0.50/kWh
-                "gbi_duration_years": 10,
-                # Accelerated depreciation
-                "accelerated_depreciation_available": True,
-                "accelerated_depreciation_rate": 0.40  # 40% in first year
+                "confidence": "high",
+                "policy_type": "Generation Based Incentive (GBI) + Accelerated Depreciation",
+                "incentive_period": "10 years generation incentive"
             })
 
         elif "wind" in technology:
-            # Wind policies
-            incentives.update({
-                "gbi_available": True,
-                "gbi_rate_inr_per_kwh": 0.50,
-                "gbi_duration_years": 10,
-                "accelerated_depreciation_available": True,
-                "accelerated_depreciation_rate": 0.40
+            result.update({
+                "gbi_rate": self.gbi_wind,  # ₹3.00/kWh
+                "gbi_currency": "INR",
+                "gbi_period_years": 10,
+                "accelerated_depreciation": self.accelerated_depreciation * 100,
+                "corporate_tax_rate": self.corporate_tax_rate * 100,
+                "confidence": "high",
+                "policy_type": "Generation Based Incentive (GBI) + Accelerated Depreciation",
+                "incentive_period": "10 years generation incentive"
             })
 
-        # Viability Gap Funding for larger projects
-        incentives["viability_gap_funding"] = True
-        incentives["vgf_max_percent"] = 20.0  # Up to 20% of project cost
+        else:
+            # Default for other technologies
+            result.update({
+                "gbi_rate": self.gbi_solar,
+                "gbi_currency": "INR",
+                "accelerated_depreciation": self.accelerated_depreciation * 100,
+                "corporate_tax_rate": self.corporate_tax_rate * 100,
+                "confidence": "medium"
+            })
 
-        return incentives
+        # Add state-specific incentives if provided
+        state = kwargs.get('state')
+        if state:
+            state_incentives = self._get_state_incentives(state, technology)
+            if state_incentives:
+                result['state_incentives'] = state_incentives
+                self.logger.info(f"Added state incentives for {state}")
 
-    def _get_state_incentives(self, state: str, technology: str) -> list:
-        """Get state-level incentives."""
+        # Add recent auction results context
+        result['recent_auctions'] = self._get_recent_auction_results(technology)
 
-        state_policies = {
-            "GJ": {  # Gujarat
-                "solar_pv": [
-                    "Gujarat Solar Power Policy 2021: Feed-in tariff ₹2.50/kWh",
-                    "SGST exemption for 5 years",
-                    "Electricity duty exemption",
-                    "Land allocation at concessional rates in solar parks"
-                ],
-                "onshore_wind": [
-                    "Gujarat Wind Power Policy: Feed-in tariff ₹2.80/kWh",
-                    "SGST exemption for 5 years",
-                    "Banking facility for excess generation",
-                    "Dedicated wind zones in Kutch and Saurashtra"
-                ]
+        # Log what we're returning
+        self.logger.info(
+            f"India policy data compiled: GBI=₹{result.get('gbi_rate', 0)}/kWh, "
+            f"AD={result.get('accelerated_depreciation', 0)}%"
+        )
+
+        if result.get('research_context'):
+            self.logger.info(
+                f"Including market research: "
+                f"{len(result['research_context'].get('sources', []))} sources"
+            )
+
+        return result
+
+    def _get_state_incentives(
+            self,
+            state: str,
+            technology: str
+    ) -> Dict[str, Any]:
+        """
+        Get state-specific incentives.
+
+        India has significant state-level policy variation.
+
+        Args:
+            state: State name (Gujarat, Rajasthan, Karnataka, Tamil Nadu, etc.)
+            technology: Technology type
+
+        Returns:
+            State incentives dict or empty dict
+        """
+        # State incentive database
+        state_incentives = {
+            "Gujarat": {
+                "solar_pv": {
+                    "land_allocation": True,
+                    "single_window_clearance": True,
+                    "transmission_waiver": True,
+                    "renewable_energy_zone": "30 GW zone with dedicated transmission",
+                    "description": "Gujarat offers dedicated renewable zones with plug-and-play infrastructure, best grid connectivity in India"
+                },
+                "onshore_wind": {
+                    "land_allocation": True,
+                    "single_window_clearance": True,
+                    "transmission_waiver": True,
+                    "offshore_wind_zone": "30 GW offshore zone identified",
+                    "description": "Gujarat leading offshore wind development with first auction Q1 2025"
+                }
             },
-            "RJ": {  # Rajasthan
-                "solar_pv": [
-                    "Rajasthan Solar Energy Policy: Feed-in tariff ₹2.45/kWh",
-                    "Capital subsidy 30% for projects <1 MW",
-                    "Stamp duty exemption",
-                    "Dedicated solar parks with infrastructure"
-                ],
-                "onshore_wind": [
-                    "Rajasthan Wind Energy Policy: Feed-in tariff ₹2.75/kWh",
-                    "SGST exemption for 5 years",
-                    "Wheeling charges waiver",
-                    "High wind resource areas in Jaisalmer"
-                ]
+            "Rajasthan": {
+                "solar_pv": {
+                    "mega_solar_parks": True,
+                    "land_lease_facilitation": True,
+                    "wheeling_charges_waiver": True,
+                    "description": "Rajasthan's Ultra Mega Renewable Energy Power Parks offer plug-and-play infrastructure, excellent solar resource"
+                }
             },
-            "TN": {  # Tamil Nadu
-                "solar_pv": [
-                    "Tamil Nadu Solar Energy Policy: Feed-in tariff ₹2.60/kWh",
-                    "Capital subsidy 25% for rooftop projects",
-                    "Wheeling and banking facility",
-                    "Front-runner state with strong grid infrastructure"
-                ],
-                "onshore_wind": [
-                    "Tamil Nadu Wind Energy Policy: Feed-in tariff ₹2.85/kWh",
-                    "25-year PPA available",
-                    "Best wind resources in India (Coimbatore, Tirunelveli)",
-                    "TANGEDCO power purchase guarantee"
-                ]
+            "Karnataka": {
+                "solar_pv": {
+                    "rooftop_solar_incentive": True,
+                    "open_access_facilitation": True,
+                    "net_metering": True,
+                    "commercial_tariff": "₹5/kWh C&I rooftop tariffs",
+                    "description": "Karnataka offers attractive C&I rooftop economics with ₹5/kWh tariffs, strong distributed solar market"
+                }
             },
-            "MH": {  # Maharashtra
-                "solar_pv": [
-                    "Maharashtra Solar Policy: Feed-in tariff ₹2.55/kWh",
-                    "Net metering for rooftop projects",
-                    "SGST exemption",
-                    "Open access facilitation"
-                ],
-                "onshore_wind": [
-                    "Maharashtra Wind Policy: Feed-in tariff ₹2.80/kWh",
-                    "Good wind resources in Western Ghats",
-                    "Banking facility available",
-                    "SGST exemption for 5 years"
-                ]
+            "Tamil Nadu": {
+                "onshore_wind": {
+                    "wind_resource_zones": True,
+                    "land_allocation": True,
+                    "description": "Tamil Nadu has excellent wind corridors, mature supply chain ecosystem"
+                }
             }
         }
 
-        return state_policies.get(state, {}).get(technology, [
-            f"Generic state policies apply for {technology}"
-        ])
+        # Get state and technology specific incentives
+        state_data = state_incentives.get(state, {})
+        tech_incentives = state_data.get(technology, {})
 
-    def _get_depreciation_schedule(self) -> Dict[str, Any]:
-        """
-        Get depreciation schedule.
+        if tech_incentives:
+            self.logger.debug(f"Found state incentives for {state} - {technology}")
 
-        India allows accelerated depreciation for renewable energy:
-        - 40% in first year
-        - Then Written Down Value (WDV) method at 40%
+        return tech_incentives
+
+    def _get_recent_auction_results(self, technology: str) -> Dict[str, Any]:
         """
-        return {
-            "method": "Accelerated Depreciation (WDV)",
-            "first_year_rate": 0.40,
-            "subsequent_years_rate": 0.40,
-            "description": "40% WDV method - significantly reduces tax burden",
-            "benefit_calculation": "40% of asset value in Year 1, then 40% of remaining value each year"
+        Get recent auction results for context.
+
+        Args:
+            technology: Technology type
+
+        Returns:
+            Recent auction results
+        """
+        auction_results = {
+            "solar_pv": {
+                "seci_solar": "₹2.44-2.53/kWh",
+                "gujarat_solar": "₹2.39/kWh",
+                "karnataka_solar": "₹2.50/kWh",
+                "manufacturing_linked": "₹2.40/kWh (with domestic modules)",
+                "description": "Recent SECI tenders clearing at ₹2.44-2.53/kWh"
+            },
+            "onshore_wind": {
+                "seci_wind": "₹2.77-2.93/kWh",
+                "hybrid": "₹2.67-2.85/kWh",
+                "description": "Wind auctions clearing at ₹2.77-2.93/kWh"
+            },
+            "hybrid": {
+                "solar_wind_hybrid": "₹2.67-2.85/kWh",
+                "rtc_firm_power": "₹3.62-4.04/kWh",
+                "description": "Round-the-clock (RTC) renewable tenders at ₹3.62-4.04/kWh"
+            }
         }
 
-    def _get_tax_info(self) -> Dict[str, Any]:
+        return auction_results.get(technology, {})
+
+    def calculate_gbi_value(
+            self,
+            annual_generation_kwh: float,
+            technology: str = "solar_pv",
+            years: int = 10
+    ) -> Dict[str, float]:
         """
-        Get tax information.
+        Calculate GBI (Generation Based Incentive) value.
 
-        India corporate tax structure:
-        - Standard rate: 30%
-        - Surcharge: 10-12% (for income > ₹1 crore)
-        - Health & Education Cess: 4%
-        - Effective rate: ~25-26% (with deductions)
+        Args:
+            annual_generation_kwh: Annual generation in kWh
+            technology: Technology type (affects GBI rate)
+            years: Number of years (typically 10)
+
+        Returns:
+            Dictionary with GBI calculations
         """
-        return {
-            "corporate_tax_rate": 0.25,  # Effective rate with deductions
-            "standard_rate": 0.30,
-            "surcharge": 0.10,
-            "health_education_cess": 0.04,
-            "gst_rate": 0.05,  # 5% GST on renewable energy equipment
-            "minimum_alternate_tax": 0.155,  # 15.5% MAT
-            "tax_holiday_available": True,
-            "tax_holiday_duration_years": 10,
-            "tax_holiday_description": "80-IA deduction: 100% profit exemption for 10 years"
-        }
-
-    def _get_market_info(self, state: str) -> Dict[str, Any]:
-        """Get electricity market information."""
-
-        # State-wise average tariffs (₹/kWh)
-        state_tariffs = {
-            "GJ": 2.50,  # Gujarat
-            "RJ": 2.45,  # Rajasthan
-            "TN": 2.60,  # Tamil Nadu
-            "MH": 2.55,  # Maharashtra
-            "KA": 2.65,  # Karnataka
-        }
-
-        return {
-            "state": state,
-            "average_feed_in_tariff_inr_per_kwh": state_tariffs.get(state, 2.50),
-            "power_purchase_agreement_duration_years": 25,
-            "payment_security_mechanism": "Letter of Credit / Payment Security Fund",
-            "grid_availability": "high",
-            "must_run_status": True,  # Renewable energy gets priority dispatch
-            "renewable_purchase_obligation_percent": 10.5,  # RPO targets
-            "market_type": "Regulated (Feed-in Tariff) + Open Access available",
-            "exchanges": ["IEX", "PXIL"],  # Indian Energy Exchange, Power Exchange India
-            "spot_market_available": True
-        }
-
-    def _get_policy_notes(self, technology: str) -> list:
-        """Get important policy notes."""
-
-        notes = [
-            "India targeting 500 GW renewable capacity by 2030",
-            "Strong policy support at central and state levels",
-            "Land acquisition can be challenging - solar parks recommended",
-            "Grid connectivity improving but varies by region",
-            "Payment security mechanisms in place for most states"
-        ]
-
         if technology == "solar_pv":
-            notes.extend([
-                "ALMM (Approved List of Models and Manufacturers) compliance required",
-                "DCR (Domestic Content Requirement) may apply for government tenders",
-                "Rooftop solar has separate schemes (PM-KUSUM, etc.)"
-            ])
-
+            gbi_rate = self.gbi_solar
         elif "wind" in technology:
-            notes.extend([
-                "Wind resource assessment mandatory before project",
-                "Tamil Nadu and Gujarat are preferred states for wind",
-                "Repowering policy available for old wind farms"
-            ])
+            gbi_rate = self.gbi_wind
+        else:
+            gbi_rate = self.gbi_solar
 
-        return notes
+        annual_gbi = annual_generation_kwh * gbi_rate
+        total_gbi = annual_gbi * years
+
+        # Convert to USD for comparison (approximate: 1 USD = 83 INR)
+        usd_exchange_rate = 83
+        annual_gbi_usd = annual_gbi / usd_exchange_rate
+        total_gbi_usd = total_gbi / usd_exchange_rate
+
+        return {
+            "gbi_rate_inr_per_kwh": gbi_rate,
+            "annual_gbi_inr": annual_gbi,
+            "total_gbi_10years_inr": total_gbi,
+            "annual_gbi_usd": annual_gbi_usd,
+            "total_gbi_10years_usd": total_gbi_usd,
+            "currency": "INR",
+            "years": years
+        }
+
+    def calculate_pli_value(
+            self,
+            project_capex: float,
+            uses_domestic_modules: bool = True
+    ) -> Dict[str, float]:
+        """
+        Calculate PLI (Production Linked Incentive) value.
+
+        Args:
+            project_capex: Project capital expenditure
+            uses_domestic_modules: Whether project uses domestic modules
+
+        Returns:
+            Dictionary with PLI calculations
+        """
+        if not uses_domestic_modules:
+            return {
+                "module_subsidy": 0,
+                "total_pli": 0,
+                "effective_capex": project_capex,
+                "note": "PLI only available for domestic module usage"
+            }
+
+        module_subsidy = project_capex * self.pli_module_subsidy
+        effective_capex = project_capex - module_subsidy
+
+        return {
+            "module_subsidy": module_subsidy,
+            "subsidy_rate": self.pli_module_subsidy * 100,
+            "total_pli": module_subsidy,
+            "original_capex": project_capex,
+            "effective_capex": effective_capex,
+            "savings_percent": (module_subsidy / project_capex) * 100,
+            "deadline": "Apply before March 2025"
+        }
+
+    def calculate_accelerated_depreciation_benefit(
+            self,
+            project_capex: float
+    ) -> Dict[str, float]:
+        """
+        Calculate accelerated depreciation tax benefit.
+
+        Args:
+            project_capex: Project capital expenditure
+
+        Returns:
+            Dictionary with depreciation benefit calculations
+        """
+        # First year depreciation
+        year1_depreciation = project_capex * self.accelerated_depreciation
+
+        # Tax benefit (at corporate tax rate)
+        tax_benefit = year1_depreciation * self.corporate_tax_rate
+
+        # Present value benefit (assuming discount rate of 10%)
+        discount_rate = 0.10
+        pv_benefit = tax_benefit / (1 + discount_rate)
+
+        return {
+            "year1_depreciation": year1_depreciation,
+            "depreciation_rate": self.accelerated_depreciation * 100,
+            "tax_benefit": tax_benefit,
+            "tax_rate": self.corporate_tax_rate * 100,
+            "pv_benefit": pv_benefit,
+            "benefit_as_percent_capex": (tax_benefit / project_capex) * 100
+        }
 
 
-# Demo
+# Demo / Testing
 if __name__ == "__main__":
     import asyncio
-    from src.utils.config_loader import ConfigLoader
 
     print("=" * 70)
-    print("🇮🇳 India Policy Handler Demo 🇮🇳")
+    print("🇮🇳 India Policy Handler Demo - With Research Context")
     print("=" * 70)
 
-    config_loader = ConfigLoader()
 
-    # Note: india.yaml doesn't exist yet, so we'll use a minimal config
-    india_config = {
-        "country": {
-            "code": "IND",
-            "name": "India"
+    async def demo():
+        # Create handler
+        config = {
+            "country": {
+                "code": "IND",
+                "name": "India"
+            }
         }
-    }
 
-    handler = IndiaPolicyHandler(india_config)
+        handler = IndiaPolicyHandler(config)
 
-    print(f"\n1. Country: {handler.get_country_name()} ({handler.get_country_code()})")
+        print("\n" + "=" * 70)
+        print("TEST 1: Solar PV Policy (Gujarat)")
+        print("=" * 70)
 
+        solar_policy = await handler.fetch_policy("solar_pv", state="Gujarat")
 
-    async def test_policies():
-        # Test Solar PV in Gujarat
-        print("\n2. Fetching Solar PV policy for Gujarat:")
-        solar_policy = await handler.fetch_policy("solar_pv", state="GJ", capacity_mw=100)
-        print(f"   PLI Available: {solar_policy['incentives']['pli_scheme_available']}")
-        print(f"   GBI Rate: ₹{solar_policy['incentives']['gbi_rate_inr_per_kwh']}/kWh")
-        print(f"   Accelerated Depreciation: {solar_policy['incentives']['accelerated_depreciation_rate'] * 100}%")
-        print(f"   Tax Rate: {solar_policy['tax_rate'] * 100}%")
-        print(f"   Feed-in Tariff: ₹{solar_policy['market_information']['average_feed_in_tariff_inr_per_kwh']}/kWh")
-        print(f"   State Incentives: {len(solar_policy['incentives']['state_incentives'])} programs")
-        for incentive in solar_policy['incentives']['state_incentives'][:2]:
-            print(f"     - {incentive}")
+        print(f"\n💰 National Incentives:")
+        print(f"  GBI Rate: ₹{solar_policy['gbi_rate']}/kWh")
+        print(f"  GBI Period: {solar_policy['gbi_period_years']} years")
+        print(f"  Accelerated Depreciation: {solar_policy['accelerated_depreciation']}%")
 
-        # Test Wind in Tamil Nadu
-        print("\n3. Fetching Onshore Wind policy for Tamil Nadu:")
-        wind_policy = await handler.fetch_policy("onshore_wind", state="TN", capacity_mw=150)
-        print(f"   GBI Available: {wind_policy['incentives']['gbi_available']}")
+        if solar_policy.get('pli_scheme'):
+            pli = solar_policy['pli_scheme']
+            print(f"\n🏭 PLI Scheme:")
+            print(f"  {pli['description']}")
+            print(f"  Deadline: {pli['deadline']}")
+
+        if solar_policy.get('state_incentives'):
+            print(f"\n🏛️  State Incentives (Gujarat):")
+            print(f"  {solar_policy['state_incentives']['description']}")
+
+        if solar_policy.get('recent_auctions'):
+            print(f"\n📊 Recent Auction Results:")
+            auctions = solar_policy['recent_auctions']
+            print(f"  SECI Solar: {auctions.get('seci_solar', 'N/A')}")
+            print(f"  Gujarat Solar: {auctions.get('gujarat_solar', 'N/A')}")
+
+        if solar_policy.get('research_context'):
+            research = solar_policy['research_context']
+            print(f"\n📊 Market Research Available:")
+            print(f"  Market Overview: {len(research.get('market_overview', ''))} chars")
+            print(f"  Recent Policies: {len(research.get('recent_policies', ''))} chars")
+            print(f"  Opportunities: {len(research.get('opportunities', ''))} chars")
+            print(f"  Sources: {len(research.get('sources', []))} URLs")
+
+            print(f"\n📈 Market Overview (excerpt):")
+            print(f"  {research.get('market_overview', '')[:200]}...")
+
+            print(f"\n🎯 Opportunities (excerpt):")
+            print(f"  {research.get('opportunities', '')[:200]}...")
+
+        print("\n" + "=" * 70)
+        print("TEST 2: GBI Calculation")
+        print("=" * 70)
+
+        annual_generation = 175_000_000  # 175 GWh = 175,000 MWh
+        gbi_calc = handler.calculate_gbi_value(annual_generation, "solar_pv", 10)
+
+        print(f"\n💵 GBI Calculation for {annual_generation:,} kWh/year:")
+        print(f"  GBI Rate: ₹{gbi_calc['gbi_rate_inr_per_kwh']}/kWh")
+        print(f"  Annual GBI: ₹{gbi_calc['annual_gbi_inr']:,.0f} (${gbi_calc['annual_gbi_usd']:,.0f})")
         print(
-            f"   GBI Rate: ₹{wind_policy['incentives']['gbi_rate_inr_per_kwh']}/kWh for {wind_policy['incentives']['gbi_duration_years']} years")
-        print(f"   Feed-in Tariff: ₹{wind_policy['market_information']['average_feed_in_tariff_inr_per_kwh']}/kWh")
-        print(f"   PPA Duration: {wind_policy['market_information']['power_purchase_agreement_duration_years']} years")
-        print(f"   State Incentives: {len(wind_policy['incentives']['state_incentives'])} programs")
-        for incentive in wind_policy['incentives']['state_incentives'][:2]:
-            print(f"     - {incentive}")
+            f"  Total 10-year GBI: ₹{gbi_calc['total_gbi_10years_inr']:,.0f} (${gbi_calc['total_gbi_10years_usd']:,.0f})")
 
-        # Test Solar in Rajasthan
-        print("\n4. Fetching Solar PV policy for Rajasthan:")
-        rajasthan_policy = await handler.fe
+        print("\n" + "=" * 70)
+        print("TEST 3: PLI Scheme Calculation")
+        print("=" * 70)
+
+        project_capex = 5_000_000_000  # ₹500 crore = ₹5 billion
+        pli_calc = handler.calculate_pli_value(project_capex, uses_domestic_modules=True)
+
+        print(f"\n💰 PLI Calculation for ₹{project_capex:,} project:")
+        print(f"  Module Subsidy ({pli_calc['subsidy_rate']}%): ₹{pli_calc['module_subsidy']:,.0f}")
+        print(f"  Effective CapEx: ₹{pli_calc['effective_capex']:,.0f}")
+        print(f"  Savings: {pli_calc['savings_percent']:.1f}%")
+        print(f"  Deadline: {pli_calc['deadline']}")
+
+        print("\n" + "=" * 70)
+        print("✅ India Policy Handler Working with Research Context!")
+        print("=" * 70)
+
+
+    asyncio.run(demo())

@@ -1,16 +1,17 @@
 """
-OpenAI Provider - Real GPT-4 Integration
+OpenAI Provider - Real GPT-4 Integration with Research Context
 
-Provides production-grade AI insights using OpenAI's GPT-4.
+NOW WITH COMPREHENSIVE MARKET RESEARCH INTEGRATION!
 
-Features:
+Provides production-grade AI insights using OpenAI's GPT-4 with:
 - Investment insights generation
 - Risk assessment
 - Data quality analysis
 - Natural language recommendations
-- Cost tracking
+- MARKET RESEARCH CONTEXT from country_research.json
+- Source attribution
 
-Cost: ~$0.03 per analysis (GPT-4-turbo)
+Cost: ~$0.03 per analysis (GPT-4o)
 API Key: Get from https://platform.openai.com/api-keys
 
 Environment Variable:
@@ -35,7 +36,7 @@ from src.core.interfaces.llm_provider_interface import ILLMProvider
 
 class OpenAIProvider(ILLMProvider):
     """
-    OpenAI GPT-4 provider for production AI insights.
+    OpenAI GPT-4 provider for production AI insights with research context.
 
     Models Available:
     - gpt-4o: Latest, fastest, cheapest ($2.50/1M input, $10/1M output)
@@ -134,12 +135,22 @@ class OpenAIProvider(ILLMProvider):
             self,
             analysis_data: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Generate investment insights using GPT-4."""
+        """
+        Generate investment insights using GPT-4 with research context.
+
+        NOW INCLUDES MARKET RESEARCH CONTEXT FROM country_research.json!
+        This transforms insights from basic to investment-grade.
+
+        Args:
+            analysis_data: Complete analysis results
+
+        Returns:
+            Dictionary with AI-generated insights
+        """
         try:
-            self.logger.info("Generating investment insights with GPT-4...")
+            self.logger.info("Generating investment insights with GPT-4 + Research Context...")
 
             # Extract metrics - handle BOTH flat and nested structures
-            # Check if we have flat structure (from formatted result)
             if 'lcoe' in analysis_data:
                 # Flat structure (preferred)
                 lcoe = analysis_data.get('lcoe', 0)
@@ -161,14 +172,11 @@ class OpenAIProvider(ILLMProvider):
                 viability = analysis_data.get('viability_assessment', {})
                 recommendation = viability.get('recommendation', 'UNKNOWN')
 
-                # Project info from analysis context
                 project = {
                     'technology': analysis_data.get('technology', 'renewable energy'),
                     'country': analysis_data.get('country', 'this region'),
                     'capacity_mw': analysis_data.get('capacity_mw', 0)
                 }
-
-                # These won't be in raw analysis result
                 resource_summary = {}
                 policy_summary = {}
 
@@ -183,26 +191,35 @@ class OpenAIProvider(ILLMProvider):
             country = project.get('country', 'this region')
             capacity_mw = project.get('capacity_mw', 0)
 
-            # Get resource and policy data
-            resource_summary = analysis_data.get('resource_summary', {})
-            policy_summary = analysis_data.get('policy_summary', {})
+            # Extract research context (THIS IS THE KEY!)
+            research_context = policy_summary.get('research_context', None)
 
-            # Build comprehensive prompt
+            if research_context:
+                self.logger.info(
+                    f"✅ RESEARCH CONTEXT LOADED: "
+                    f"{len(research_context.get('sources', []))} sources available"
+                )
+            else:
+                self.logger.warning("⚠️  No research context available")
+
+            # Build comprehensive prompt with research context
             prompt = self._build_insights_prompt(
                 technology, country, capacity_mw,
                 lcoe, irr, npv, capacity_factor, recommendation,
-                resource_summary, policy_summary
+                resource_summary, policy_summary,
+                research_context  # NEW! This is the game-changer
             )
 
-            # DEBUG: Log a snippet of the prompt
-            self.logger.info(f"Prompt contains: LCOE ${lcoe:.2f}/MWh, IRR {irr:.1f}%")
             messages = [
                 {
                     "role": "system",
                     "content": (
                         "You are an expert renewable energy investment analyst with 20 years "
                         "of experience in project finance, resource assessment, and policy analysis. "
-                        "You provide data-driven, actionable insights for institutional investors."
+                        "You provide data-driven, actionable insights for institutional investors. "
+                        "You have access to comprehensive market research including recent policies, "
+                        "auction results, market trends, and opportunities. Reference this research "
+                        "specifically in your analysis to provide concrete, actionable recommendations."
                     )
                 },
                 {
@@ -215,13 +232,13 @@ class OpenAIProvider(ILLMProvider):
             response = await self.generate_completion(
                 messages,
                 temperature=0.3,  # Lower temperature for consistent, factual output
-                max_tokens=1000
+                max_tokens=1200  # Increased for richer insights
             )
 
             # Parse JSON response (handle markdown wrapping)
             insights = self._parse_json_response(response)
 
-            self.logger.info("Investment insights generated successfully")
+            self.logger.info("Investment insights generated successfully with research context")
             return insights
 
         except json.JSONDecodeError as e:
@@ -244,9 +261,10 @@ class OpenAIProvider(ILLMProvider):
             capacity_factor: float,
             recommendation: str,
             resource_summary: Dict[str, Any],
-            policy_summary: Dict[str, Any]
+            policy_summary: Dict[str, Any],
+            research_context: Optional[Dict[str, Any]] = None  # NEW!
     ) -> str:
-        """Build comprehensive prompt for insights generation."""
+        """Build comprehensive prompt with research context."""
 
         # Build resource details
         resource_details = ""
@@ -271,11 +289,45 @@ class OpenAIProvider(ILLMProvider):
         elif country == "DEU":
             eeg = policy_summary.get('eeg_tariff', 0)
             if eeg:
-                policy_details = f"  - EEG Tariff: €{eeg}/MWh"
+                policy_details = f"  - EEG Tariff: €{eeg}¢/kWh"
         elif country == "IND":
             gbi = policy_summary.get('gbi_rate', 0)
             if gbi:
                 policy_details = f"  - GBI Rate: ₹{gbi}/kWh"
+
+        # Build RESEARCH CONTEXT section (THE KEY ADDITION!)
+        research_section = ""
+        if research_context:
+            research_section = f"""
+
+================================================================================
+COMPREHENSIVE MARKET RESEARCH & INTELLIGENCE
+================================================================================
+
+📊 MARKET OVERVIEW:
+{research_context.get('market_overview', 'Not available')}
+
+📜 RECENT POLICY DEVELOPMENTS:
+{research_context.get('recent_policies', 'Not available')}
+
+📈 KEY MARKET TRENDS:
+{research_context.get('key_trends', 'Not available')}
+
+⚠️ KNOWN CHALLENGES:
+{research_context.get('challenges', 'Not available')}
+
+💡 MARKET OPPORTUNITIES:
+{research_context.get('opportunities', 'Not available')}
+
+💰 RECENT AUCTION RESULTS:
+{research_context.get('recent_auction_results', 'Not available')}
+
+📚 AUTHORITATIVE SOURCES:
+{chr(10).join('  - ' + source for source in research_context.get('sources', []))}
+
+CRITICAL: You MUST reference specific facts from this research in your analysis.
+Use actual numbers, company names, policy details, and opportunities mentioned above.
+"""
 
         prompt = f"""Analyze this renewable energy investment opportunity:
 
@@ -296,59 +348,66 @@ RESOURCE QUALITY:
 
 POLICY ENVIRONMENT:
 {policy_details if policy_details else "  - Data not available"}
+{research_section}
 
-Provide a comprehensive investment analysis with:
+================================================================================
+ANALYSIS INSTRUCTIONS
+================================================================================
 
-1. **Key Insights** (3 insights):
-   - Focus on financial viability and competitive positioning
-   - Compare to industry benchmarks (solar LCOE: $40-80/MWh, wind: $30-60/MWh)
-   - Highlight strengths or weaknesses relative to typical projects
-   - Be specific about WHY metrics are good or concerning
+Provide a comprehensive investment analysis that DIRECTLY REFERENCES the market 
+research provided above. Your insights must be:
 
-2. **Risks** (3 major risks):
-   - Financial risks (returns, bankability, market)
-   - Technical risks (resource variability, technology)
-   - Policy/regulatory risks (incentive changes, permits)
-   - Be concrete and actionable
+1. **SPECIFIC**: Use actual numbers, company names, and policy details from the research
+2. **ACTIONABLE**: Provide concrete next steps with deadlines and targets
+3. **SOURCED**: Reference the research data (e.g., "per recent auction data", "Amazon/Google active in region")
+4. **COMPARATIVE**: Compare project metrics to recent auction results and market benchmarks
 
-3. **Opportunities** (3 opportunities):
-   - Ways to improve project economics
-   - Market opportunities (PPAs, merchant, storage)
-   - Policy optimization strategies
-   - Technology or structure improvements
-   - Be specific and actionable
+**Key Insights** (3 insights):
+- Compare LCOE to recent auction results mentioned in research
+- Reference specific policy developments (e.g., "PLI scheme deadline March 2025")
+- Cite actual market trends (e.g., "Amazon 10 GW procurement target")
+- Explain WHY metrics are good/concerning using research context
 
-4. **Investment Recommendation Summary** (2-3 sentences):
-   - Clear recommendation aligned with current status
-   - Specific reasoning based on metrics
-   - Concrete next steps or conditions for investment
+**Risks** (3 major risks):
+- Reference actual challenges from research (e.g., "grid interconnection delays 3-5 years")
+- Cite specific policy risks (e.g., "ITC phase-down post-2032")
+- Use real market data to quantify risks
+
+**Opportunities** (3 opportunities):
+- Reference specific opportunities from research (e.g., "hydrogen hub development")
+- Cite actual buyers/markets (e.g., "corporate PPA market, Amazon/Google seeking 15-20 year contracts")
+- Include concrete implementation steps and deadlines
+
+**Recommendation Summary** (2-3 sentences):
+- Clear recommendation aligned with metrics
+- Reference specific research findings
+- Provide concrete next steps with timeline
 
 OUTPUT FORMAT (JSON only, no markdown):
 {{
   "key_insights": [
-    "Insight 1 with specific numbers and reasoning",
-    "Insight 2 with specific numbers and reasoning",
-    "Insight 3 with specific numbers and reasoning"
+    "Insight 1 with specific numbers from research and reasoning",
+    "Insight 2 referencing actual policies/companies/auctions from research",
+    "Insight 3 with concrete market comparisons from research"
   ],
   "risks": [
-    "Risk 1 with specific concerns and impact",
-    "Risk 2 with specific concerns and impact",
-    "Risk 3 with specific concerns and impact"
+    "Risk 1 referencing actual challenges from research with timeline/impact",
+    "Risk 2 citing specific policy/market risks from research data",
+    "Risk 3 with quantified impact based on research"
   ],
   "opportunities": [
-    "Opportunity 1 with specific potential and approach",
-    "Opportunity 2 with specific potential and approach",
-    "Opportunity 3 with specific potential and approach"
+    "Opportunity 1 with specific action, citing research (e.g., target Amazon PPA)",
+    "Opportunity 2 with implementation steps and deadline from research",
+    "Opportunity 3 with quantified potential based on research data"
   ],
-  "recommendation_summary": "2-3 sentence summary with specific reasoning and next steps"
+  "recommendation_summary": "2-3 sentence summary citing specific research findings and providing concrete next steps with timeline"
 }}
 
-IMPORTANT: 
-- Be specific with numbers and comparisons
-- Reference actual project metrics in your analysis
-- Provide actionable, concrete recommendations
-- Keep professional investment analyst tone
-- Output ONLY valid JSON, no other text
+CRITICAL REQUIREMENTS:
+- Reference at least 3 specific facts from the market research
+- Use actual company names, auction results, and policy deadlines
+- Provide concrete numbers and timelines, not generic advice
+- Output ONLY valid JSON, no markdown formatting
 """
 
         return prompt
@@ -561,98 +620,3 @@ Output ONLY valid JSON.
             logger.setLevel(logging.INFO)
 
         return logger
-
-
-# Demo
-if __name__ == "__main__":
-    import asyncio
-
-    print("=" * 70)
-    print("🤖 OpenAI Provider Demo")
-    print("=" * 70)
-
-
-    async def demo():
-        # Check for API key
-        api_key = os.getenv('OPENAI_API_KEY')
-
-        if not api_key:
-            print("\n❌ OPENAI_API_KEY not set!")
-            print("\nTo use this provider:")
-            print("1. Get API key: https://platform.openai.com/api-keys")
-            print("2. Set environment variable:")
-            print("   export OPENAI_API_KEY='sk-...'")
-            print("3. Run this demo again")
-            return
-
-        print(f"\n✅ API key found: {api_key[:20]}...")
-
-        try:
-            # Create provider
-            provider = OpenAIProvider(model="gpt-4o")
-            print(f"✅ Provider initialized: {provider.get_provider_name()}")
-
-            # Test insights generation
-            print("\n" + "=" * 70)
-            print("TEST: Generating Investment Insights")
-            print("=" * 70)
-
-            test_analysis = {
-                "project": {
-                    "technology": "solar_pv",
-                    "country": "USA",
-                    "capacity_mw": 100
-                },
-                "lcoe": 72.76,
-                "irr": 5.0,
-                "npv": -70587166,
-                "capacity_factor": 0.20,
-                "recommendation": "NOT VIABLE",
-                "resource_summary": {
-                    "ghi_kwh_m2_day": 5.58,
-                    "temperature_c": 18.1
-                },
-                "policy_summary": {
-                    "federal_itc": 30.0,
-                    "tax_rate": 0.21
-                }
-            }
-
-            insights = await provider.generate_insights(test_analysis)
-
-            print("\n🎯 AI-Generated Insights:")
-            print(f"\nKey Insights:")
-            for i, insight in enumerate(insights['key_insights'], 1):
-                print(f"  {i}. {insight}")
-
-            print(f"\nRisks:")
-            for i, risk in enumerate(insights['risks'], 1):
-                print(f"  {i}. {risk}")
-
-            print(f"\nOpportunities:")
-            for i, opp in enumerate(insights['opportunities'], 1):
-                print(f"  {i}. {opp}")
-
-            print(f"\nRecommendation:")
-            print(f"  {insights['recommendation_summary']}")
-
-            # Show usage stats
-            print("\n" + "=" * 70)
-            print("💰 Usage Statistics")
-            print("=" * 70)
-            stats = provider.get_usage_stats()
-            print(f"  Model: {stats['model']}")
-            print(f"  Requests: {stats['total_requests']}")
-            print(f"  Total Tokens: {stats['total_tokens']:,}")
-            print(f"  Estimated Cost: ${stats['estimated_cost_usd']:.4f}")
-            print(f"  Cost per Request: ${stats['cost_per_request']:.4f}")
-
-            print("\n✅ OpenAI Provider Working!")
-
-        except Exception as e:
-            print(f"\n❌ Error: {str(e)}")
-
-
-    asyncio.run(demo())
-
-    print("\n" + "=" * 70)

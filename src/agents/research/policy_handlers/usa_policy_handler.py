@@ -1,17 +1,15 @@
 """
-USA Policy Handler - United States Renewable Energy Policies
+USA Policy Handler - With Research Context Integration
 
-Fetches USA-specific policy data:
-- Federal Investment Tax Credit (ITC) - 30% for solar/wind
-- Production Tax Credit (PTC) - $27.50/MWh for wind
-- MACRS depreciation - 5-year schedule
-- State-level incentives from DSIRE database
-- Regional variations (ERCOT, CAISO, PJM, etc.)
+Handles policy data for United States renewable energy projects.
+NOW INCLUDES: Market research, recent policies, trends, opportunities!
 
-Data Sources:
-- IRS: Federal tax credits
-- DSIRE: State and utility incentives
-- EIA: Electricity market data
+Key Features:
+- Federal ITC (Investment Tax Credit): 30%
+- Federal PTC (Production Tax Credit): $27.50/MWh
+- Bonus credits for domestic content and energy communities
+- State-specific incentives (if applicable)
+- COMPLETE market research context for AI insights
 """
 
 from typing import Dict, Any
@@ -20,286 +18,335 @@ from src.agents.research.policy_handlers.base_policy_handler import BasePolicyHa
 
 class USAPolicyHandler(BasePolicyHandler):
     """
-    USA-specific policy handler.
+    USA policy handler with comprehensive research context.
 
-    Implements USA renewable energy policy fetching including:
-    - Federal ITC (30% through 2032)
-    - Federal PTC ($27.50/MWh for wind)
-    - MACRS 5-year depreciation
-    - State-level incentives
-    - Regional market differences
+    Provides:
+    - Federal tax credits (ITC/PTC)
+    - Bonus credits (domestic content, energy communities)
+    - State incentives (extensible)
+    - Market research (corporate PPAs, grid issues, auction results)
+    - Recent policy updates (IRA details)
     """
 
-    async def fetch_policy(
-            self,
-            technology: str,
-            **kwargs
-    ) -> Dict[str, Any]:
+    def __init__(self, config: Dict[str, Any]):
         """
-        Fetch USA policy data for specified technology.
+        Initialize USA policy handler.
 
         Args:
-            technology: Technology code ("solar_pv", "onshore_wind", etc.)
-            **kwargs:
-                - state: str (optional, e.g., "TX", "CA")
-                - capacity_mw: float (optional, for size-based incentives)
-                - latitude: float (optional, for regional policies)
-                - longitude: float (optional, for regional policies)
+            config: Configuration dictionary
+        """
+        super().__init__(config)
+
+        # USA-specific configuration
+        self.federal_itc_rate = 0.30  # 30% ITC through 2032
+        self.federal_ptc_rate = 27.5  # $27.50/MWh through 2032
+        self.domestic_content_bonus = 0.10  # +10%
+        self.energy_community_bonus = 0.10  # +10%
+
+        self.logger.info("USA policy handler initialized with IRA provisions")
+
+    async def fetch_policy(self, technology: str, **kwargs) -> Dict[str, Any]:
+        """
+        Fetch USA policy data with research context.
+
+        Args:
+            technology: Technology type (solar_pv, onshore_wind, etc.)
+            **kwargs: Additional parameters (state code, capacity, etc.)
 
         Returns:
-            Dictionary with USA policy data
+            Complete policy data including research context
         """
-        state = kwargs.get("state", "TX")  # Default to Texas for POC
-        capacity_mw = kwargs.get("capacity_mw", 100.0)
+        self.logger.info(f"Fetching USA policy data for {technology}")
 
+        # Get base policy data (includes research context)
+        result = self.get_policy_data()
+
+        # Add USA-specific policy details based on technology
+        if technology == "solar_pv":
+            result.update({
+                "federal_itc": self.federal_itc_rate * 100,  # Convert to percentage
+                "federal_ptc": 0.0,  # Solar uses ITC, not PTC
+                "bonus_credits": {
+                    "domestic_content": self.domestic_content_bonus * 100,
+                    "energy_community": self.energy_community_bonus * 100,
+                    "description": "Additional 10% for domestic content + 10% for energy communities"
+                },
+                "tax_rate": 0.21,  # Federal corporate tax rate
+                "depreciation": {
+                    "macrs": True,
+                    "period_years": 5,
+                    "description": "5-year MACRS depreciation"
+                },
+                "confidence": "high",
+                "policy_type": "Investment Tax Credit (ITC)",
+                "credit_period": "Through 2032, then phase down"
+            })
+
+        elif "wind" in technology:
+            result.update({
+                "federal_itc": 0.0,  # Wind typically uses PTC, not ITC
+                "federal_ptc": self.federal_ptc_rate,  # $27.50/MWh
+                "bonus_credits": {
+                    "domestic_content": self.domestic_content_bonus * 100,
+                    "energy_community": self.energy_community_bonus * 100,
+                    "description": "Additional 10% for domestic content + 10% for energy communities (applied to PTC base rate)"
+                },
+                "tax_rate": 0.21,
+                "depreciation": {
+                    "macrs": True,
+                    "period_years": 5,
+                    "description": "5-year MACRS depreciation"
+                },
+                "confidence": "high",
+                "policy_type": "Production Tax Credit (PTC)",
+                "credit_period": "10 years of production, through 2032 start date"
+            })
+
+        else:
+            # Default for other technologies
+            result.update({
+                "federal_itc": self.federal_itc_rate * 100,
+                "federal_ptc": 0.0,
+                "tax_rate": 0.21,
+                "confidence": "medium"
+            })
+
+        # Add state-specific incentives if provided
+        state = kwargs.get('state')
+        if state:
+            state_incentives = self._get_state_incentives(state, technology)
+            if state_incentives:
+                result['state_incentives'] = state_incentives
+                self.logger.info(f"Added state incentives for {state}")
+
+        # Log what we're returning
         self.logger.info(
-            f"Fetching USA policy data for {technology} in {state} "
-            f"({capacity_mw} MW)"
+            f"USA policy data compiled: ITC={result.get('federal_itc', 0)}%, "
+            f"PTC=${result.get('federal_ptc', 0)}/MWh"
         )
 
-        # Federal incentives (same for all states)
-        federal_incentives = self._get_federal_incentives(technology)
-
-        # State-level incentives
-        state_incentives = self._get_state_incentives(state, technology)
-
-        # Depreciation schedule
-        depreciation = self._get_depreciation_schedule()
-
-        # Tax information
-        tax_info = self._get_tax_info()
-
-        # Regional market information
-        regional_info = self._get_regional_market_info(state)
-
-        result = {
-            "country": "USA",
-            "technology": technology,
-            "incentives": {
-                **federal_incentives,
-                "state_incentives": state_incentives,
-            },
-            "depreciation": depreciation,
-            "tax_rate": tax_info["corporate_tax_rate"],
-            "tax_info": tax_info,
-            "regional": regional_info,
-            "source": "IRS (2024) + DSIRE Database",
-            "confidence": "high",
-            "last_updated": "2024-12-01",
-            "notes": self._get_policy_notes(technology)
-        }
-
-        # Validate result
-        if not self._validate_policy_result(result):
-            self.logger.warning("Policy result validation failed")
+        if result.get('research_context'):
+            self.logger.info(
+                f"Including market research: "
+                f"{len(result['research_context'].get('sources', []))} sources"
+            )
 
         return result
 
-    def _get_federal_incentives(self, technology: str) -> Dict[str, Any]:
+    def _get_state_incentives(
+            self,
+            state: str,
+            technology: str
+    ) -> Dict[str, Any]:
         """
-        Get federal tax incentives.
+        Get state-specific incentives.
 
-        ITC (Investment Tax Credit):
-        - Solar: 30% through 2032, then phases down
-        - Wind: 30% through 2032 (or PTC alternative)
+        This is extensible - add more states as needed.
 
-        PTC (Production Tax Credit):
-        - Wind: $27.50/MWh for 10 years (inflation adjusted)
+        Args:
+            state: State code (TX, CA, NY, etc.)
+            technology: Technology type
+
+        Returns:
+            State incentives dict or empty dict
         """
-        incentives = {
-            "federal_itc_percentage": 30.0,  # Current ITC rate
-            "federal_itc_duration": "Through 2032",
-            "federal_itc_phase_down": {
-                2033: 26.0,
-                2034: 22.0,
-                2035: 0.0  # Unless extended
+        # State incentive database (extensible)
+        state_incentives = {
+            "TX": {
+                "solar_pv": {
+                    "property_tax_exemption": True,
+                    "sales_tax_exemption": True,
+                    "description": "Texas offers property tax and sales tax exemptions for renewable energy systems"
+                },
+                "onshore_wind": {
+                    "property_tax_exemption": True,
+                    "sales_tax_exemption": True,
+                    "description": "Texas offers property tax and sales tax exemptions for wind energy systems"
+                }
+            },
+            "CA": {
+                "solar_pv": {
+                    "sgip_storage_incentive": True,
+                    "net_metering": True,
+                    "description": "California offers SGIP storage incentives and net metering programs"
+                }
+            },
+            "NY": {
+                "solar_pv": {
+                    "ny_sun_incentive": True,
+                    "description": "New York Sun program provides upfront incentives for solar installations"
+                },
+                "onshore_wind": {
+                    "offshore_wind_target": True,
+                    "description": "New York has aggressive offshore wind targets with procurement support"
+                }
             }
         }
 
-        # PTC only applicable to wind
-        if "wind" in technology.lower():
-            incentives["federal_ptc_usd_per_mwh"] = 27.5
-            incentives["federal_ptc_duration_years"] = 10
-            incentives["ptc_or_itc"] = "Developer can choose ITC or PTC"
+        # Get state and technology specific incentives
+        state_data = state_incentives.get(state, {})
+        tech_incentives = state_data.get(technology, {})
+
+        if tech_incentives:
+            self.logger.debug(f"Found state incentives for {state} - {technology}")
+
+        return tech_incentives
+
+    def calculate_itc_value(
+            self,
+            project_capex: float,
+            include_bonuses: bool = True
+    ) -> Dict[str, float]:
+        """
+        Calculate ITC value including bonuses.
+
+        Args:
+            project_capex: Project capital expenditure
+            include_bonuses: Whether to include bonus credits
+
+        Returns:
+            Dictionary with ITC calculations
+        """
+        base_itc = project_capex * self.federal_itc_rate
+
+        if include_bonuses:
+            # Domestic content bonus
+            dc_bonus = project_capex * self.domestic_content_bonus
+            # Energy community bonus
+            ec_bonus = project_capex * self.energy_community_bonus
+
+            total_itc = base_itc + dc_bonus + ec_bonus
+            effective_rate = (total_itc / project_capex) * 100
         else:
-            incentives["federal_ptc_usd_per_mwh"] = 0.0
+            total_itc = base_itc
+            effective_rate = self.federal_itc_rate * 100
 
-        # Bonus credits for domestic content (IRA 2022)
-        incentives["domestic_content_bonus_percentage"] = 10.0
-        incentives["energy_community_bonus_percentage"] = 10.0
-
-        return incentives
-
-    def _get_state_incentives(self, state: str, technology: str) -> list:
-        """
-        Get state-level incentives.
-
-        In real implementation, this would query DSIRE database.
-        For POC, we provide representative data.
-        """
-        state_programs = {
-            "TX": [
-                "Texas RPS: 10,000 MW renewable capacity target",
-                "Property tax exemption for renewable energy equipment",
-                "Franchise tax exemption for renewable energy systems",
-                "ERCOT market: No capacity payments, energy-only market"
-            ],
-            "CA": [
-                "California RPS: 60% by 2030, 100% by 2045",
-                "SGIP: Self-Generation Incentive Program",
-                "Net Energy Metering 3.0",
-                "Property tax exclusion for solar systems"
-            ],
-            "NY": [
-                "New York Sun: $1B solar program",
-                "NY-Sun Megawatt Block incentive",
-                "Accelerated depreciation (7 years)",
-                "NYSERDA incentives"
-            ],
-            "DEFAULT": [
-                "Check DSIRE database for state-specific programs",
-                "Federal incentives apply nationwide"
-            ]
-        }
-
-        return state_programs.get(state, state_programs["DEFAULT"])
-
-    def _get_depreciation_schedule(self) -> Dict[str, Any]:
-        """
-        Get MACRS depreciation schedule.
-
-        USA uses Modified Accelerated Cost Recovery System (MACRS)
-        5-year property for solar and wind.
-        """
         return {
-            "method": "MACRS",
-            "years": 5,
-            "schedule": [0.20, 0.32, 0.192, 0.1152, 0.1152, 0.0576],
-            "description": "Modified Accelerated Cost Recovery System - 5 year property",
-            "half_year_convention": True,
-            "basis_reduction": "Reduce by 50% of ITC taken"
+            "base_itc": base_itc,
+            "domestic_content_bonus": dc_bonus if include_bonuses else 0,
+            "energy_community_bonus": ec_bonus if include_bonuses else 0,
+            "total_itc": total_itc,
+            "effective_rate_percent": effective_rate
         }
 
-    def _get_tax_info(self) -> Dict[str, Any]:
-        """Get USA tax information."""
+    def calculate_ptc_value(
+            self,
+            annual_generation_mwh: float,
+            include_bonuses: bool = True,
+            years: int = 10
+    ) -> Dict[str, float]:
+        """
+        Calculate PTC value over production period.
+
+        Args:
+            annual_generation_mwh: Annual generation in MWh
+            include_bonuses: Whether to include bonus credits
+            years: Number of years (typically 10)
+
+        Returns:
+            Dictionary with PTC calculations
+        """
+        base_ptc_rate = self.federal_ptc_rate
+
+        if include_bonuses:
+            # Bonuses are additive to base rate
+            bonus_rate = base_ptc_rate * (
+                    self.domestic_content_bonus + self.energy_community_bonus
+            )
+            total_rate = base_ptc_rate + bonus_rate
+        else:
+            total_rate = base_ptc_rate
+
+        annual_ptc = annual_generation_mwh * total_rate
+        total_ptc = annual_ptc * years
+
         return {
-            "corporate_tax_rate": 0.21,  # Federal corporate tax
-            "state_tax_rates_vary": True,
-            "state_tax_range": [0.00, 0.12],  # Varies by state
-            "typical_combined_rate": 0.25,  # Federal + state average
+            "base_rate_per_mwh": base_ptc_rate,
+            "bonus_rate_per_mwh": bonus_rate if include_bonuses else 0,
+            "total_rate_per_mwh": total_rate,
+            "annual_ptc_value": annual_ptc,
+            "total_ptc_value_10years": total_ptc
         }
 
-    def _get_regional_market_info(self, state: str) -> Dict[str, Any]:
-        """
-        Get regional electricity market information.
 
-        USA has regional ISOs/RTOs with different market rules.
-        """
-        iso_mapping = {
-            "TX": "ERCOT",
-            "CA": "CAISO",
-            "NY": "NYISO",
-            "PA": "PJM",
-            "MA": "ISO-NE"
-        }
-
-        iso = iso_mapping.get(state, "Non-ISO")
-
-        market_info = {
-            "iso_rto": iso,
-            "has_capacity_market": iso not in ["ERCOT"],
-            "renewable_energy_credits": True,
-            "interconnection_queue": f"{iso} queue",
-        }
-
-        # ISO-specific details
-        if iso == "ERCOT":
-            market_info.update({
-                "market_type": "Energy-only market",
-                "capacity_payment": 0.0,
-                "note": "No capacity market - prices set by energy auctions"
-            })
-        elif iso == "PJM":
-            market_info.update({
-                "market_type": "Energy + Capacity",
-                "capacity_payment_usd_per_kw_day": 0.15,  # Varies by zone
-                "note": "Capacity auctions held 3 years ahead"
-            })
-
-        return market_info
-
-    def _get_policy_notes(self, technology: str) -> str:
-        """Get important policy notes."""
-        notes = []
-
-        notes.append("Inflation Reduction Act (2022) extended ITC through 2032")
-        notes.append("ITC phases down: 26% (2033), 22% (2034), 0% (2035+)")
-
-        if "wind" in technology.lower():
-            notes.append("Wind projects can choose ITC or PTC (not both)")
-            notes.append("PTC indexed to inflation annually")
-
-        notes.append("Bonus credits available: +10% domestic content, +10% energy communities")
-        notes.append("State incentives vary significantly - check DSIRE database")
-
-        return " | ".join(notes)
-
-
-# Demo
+# Demo / Testing
 if __name__ == "__main__":
     import asyncio
-    from src.utils.config_loader import ConfigLoader
 
     print("=" * 70)
-    print("USA Policy Handler Demo")
+    print("🇺🇸 USA Policy Handler Demo - With Research Context")
     print("=" * 70)
 
-    # Load USA configuration
-    config_loader = ConfigLoader()
-    usa_config = config_loader.load_country_config("USA")
 
-    # Create handler
-    handler = USAPolicyHandler(usa_config)
+    async def demo():
+        # Create handler
+        config = {
+            "country": {
+                "code": "USA",
+                "name": "United States"
+            }
+        }
 
-    print(f"\n1. Country: {handler.get_country_name()} ({handler.get_country_code()})")
+        handler = USAPolicyHandler(config)
+
+        print("\n" + "=" * 70)
+        print("TEST 1: Solar PV Policy")
+        print("=" * 70)
+
+        solar_policy = await handler.fetch_policy("solar_pv", state="TX")
+
+        print(f"\n💰 Federal Incentives:")
+        print(f"  ITC: {solar_policy['federal_itc']}%")
+        print(f"  PTC: ${solar_policy['federal_ptc']}/MWh")
+        print(f"  Bonus Credits: {solar_policy['bonus_credits']['description']}")
+
+        if solar_policy.get('state_incentives'):
+            print(f"\n🏛️  State Incentives (Texas):")
+            print(f"  {solar_policy['state_incentives']['description']}")
+
+        if solar_policy.get('research_context'):
+            research = solar_policy['research_context']
+            print(f"\n📊 Market Research Available:")
+            print(f"  Market Overview: {len(research.get('market_overview', ''))} chars")
+            print(f"  Recent Policies: {len(research.get('recent_policies', ''))} chars")
+            print(f"  Key Trends: {len(research.get('key_trends', ''))} chars")
+            print(f"  Sources: {len(research.get('sources', []))} URLs")
+
+            print(f"\n📈 Market Overview (excerpt):")
+            print(f"  {research.get('market_overview', '')[:200]}...")
+
+            print(f"\n🔗 Sources:")
+            for source in research.get('sources', [])[:3]:
+                print(f"  - {source}")
+
+        print("\n" + "=" * 70)
+        print("TEST 2: Wind Policy")
+        print("=" * 70)
+
+        wind_policy = await handler.fetch_policy("onshore_wind", state="TX")
+
+        print(f"\n💰 Federal Incentives:")
+        print(f"  ITC: {wind_policy['federal_itc']}%")
+        print(f"  PTC: ${wind_policy['federal_ptc']}/MWh")
+        print(f"  Credit Period: {wind_policy['credit_period']}")
+
+        print("\n" + "=" * 70)
+        print("TEST 3: ITC Calculation")
+        print("=" * 70)
+
+        project_capex = 150_000_000  # $150M project
+        itc_calc = handler.calculate_itc_value(project_capex, include_bonuses=True)
+
+        print(f"\n💵 ITC Calculation for ${project_capex:,} project:")
+        print(f"  Base ITC (30%): ${itc_calc['base_itc']:,.0f}")
+        print(f"  Domestic Content Bonus: ${itc_calc['domestic_content_bonus']:,.0f}")
+        print(f"  Energy Community Bonus: ${itc_calc['energy_community_bonus']:,.0f}")
+        print(f"  Total ITC: ${itc_calc['total_itc']:,.0f}")
+        print(f"  Effective Rate: {itc_calc['effective_rate_percent']:.1f}%")
+
+        print("\n" + "=" * 70)
+        print("✅ USA Policy Handler Working with Research Context!")
+        print("=" * 70)
 
 
-    # Test fetching policy data
-    async def test_policies():
-        # Test solar in Texas
-        print("\n2. Fetching Solar PV policy for Texas:")
-        solar_policy = await handler.fetch_policy("solar_pv", state="TX", capacity_mw=100)
-
-        print(f"   Federal ITC: {solar_policy['incentives']['federal_itc_percentage']}%")
-        print(
-            f"   Depreciation: {solar_policy['depreciation']['method']} - {solar_policy['depreciation']['years']} years")
-        print(f"   Tax Rate: {solar_policy['tax_rate'] * 100}%")
-        print(f"   State incentives: {len(solar_policy['incentives']['state_incentives'])} programs")
-        for incentive in solar_policy['incentives']['state_incentives']:
-            print(f"     - {incentive}")
-
-        # Test wind in Texas
-        print("\n3. Fetching Onshore Wind policy for Texas:")
-        wind_policy = await handler.fetch_policy("onshore_wind", state="TX", capacity_mw=150)
-
-        print(f"   Federal ITC: {wind_policy['incentives']['federal_itc_percentage']}%")
-        print(f"   Federal PTC: ${wind_policy['incentives']['federal_ptc_usd_per_mwh']}/MWh")
-        print(f"   PTC Duration: {wind_policy['incentives']['federal_ptc_duration_years']} years")
-        print(f"   ISO/RTO: {wind_policy['regional']['iso_rto']}")
-        print(f"   Capacity Market: {wind_policy['regional']['has_capacity_market']}")
-
-        # Test California
-        print("\n4. Fetching Solar PV policy for California:")
-        ca_policy = await handler.fetch_policy("solar_pv", state="CA", capacity_mw=200)
-
-        print(f"   State incentives: {len(ca_policy['incentives']['state_incentives'])} programs")
-        for incentive in ca_policy['incentives']['state_incentives']:
-            print(f"     - {incentive}")
-        print(f"   ISO/RTO: {ca_policy['regional']['iso_rto']}")
-
-
-    asyncio.run(test_policies())
-
-    print("\n" + "=" * 70)
-    print("✅ USA Policy Handler working correctly!")
-    print("=" * 70)
+    asyncio.run(demo())

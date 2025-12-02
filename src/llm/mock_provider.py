@@ -70,13 +70,18 @@ class MockLLMProvider(ILLMProvider):
 
         Creates realistic insights based on actual metrics.
         """
-        # Extract key metrics
-        lcoe = analysis_data.get('lcoe', 0)
-        irr = analysis_data.get('irr', 0)
+        # Extract key metrics - handle both direct values and nested structure
+        lcoe = analysis_data.get('lcoe', analysis_data.get('financial_metrics', {}).get('lcoe_usd_per_mwh', 0))
+        irr = analysis_data.get('irr', analysis_data.get('financial_metrics', {}).get('irr_percent', 0))
         capacity_factor = analysis_data.get('capacity_factor', 0)
-        recommendation = analysis_data.get('recommendation', 'UNKNOWN')
-        technology = analysis_data.get('project', {}).get('technology', 'unknown')
-        country = analysis_data.get('project', {}).get('country', 'unknown')
+        recommendation = analysis_data.get('recommendation',
+                                           analysis_data.get('viability_assessment', {}).get('recommendation',
+                                                                                             'UNKNOWN'))
+
+        # Extract project info
+        project = analysis_data.get('project', {})
+        technology = project.get('technology', 'renewable energy')
+        country = project.get('country', 'this region')
 
         # Generate insights based on metrics
         insights = []

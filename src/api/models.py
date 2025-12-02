@@ -126,16 +126,32 @@ class PolicySummary(BaseModel):
     eeg_tariff: Optional[float] = Field(None, description="EEG feed-in tariff (€/MWh)")
 
 
+class AIInsights(BaseModel):
+    """AI-generated insights."""
+    key_insights: List[str] = Field(..., description="Key investment insights")
+    risks: List[str] = Field(..., description="Identified risks")
+    opportunities: List[str] = Field(..., description="Investment opportunities")
+    recommendation_summary: str = Field(..., description="Natural language summary")
+
+
+class DataQualityAssessment(BaseModel):
+    """Data quality assessment."""
+    overall_quality: str = Field(..., description="Overall data quality")
+    confidence_score: float = Field(..., description="Confidence score (0-1)")
+    data_gaps: List[str] = Field(..., description="Identified data gaps")
+    quality_notes: str = Field(..., description="Quality assessment notes")
+    policy_data_quality: str = Field(..., description="Policy data quality")
+    resource_data_quality: str = Field(..., description="Resource data quality")
+
+
 class AnalyzeResponse(BaseModel):
     """
-    Response model for opportunity analysis.
-
-    Contains all key metrics and detailed results.
+    Enhanced response model with AI insights.
     """
     # Project info
     project: Dict[str, Any] = Field(..., description="Project information")
 
-    # Key metrics (easy access)
+    # Key metrics
     lcoe: float = Field(..., description="LCOE ($/MWh)")
     irr: float = Field(..., description="IRR (%)")
     npv: float = Field(..., description="NPV ($)")
@@ -149,6 +165,10 @@ class AnalyzeResponse(BaseModel):
     # Summaries
     resource_summary: ResourceSummary = Field(..., description="Resource data summary")
     policy_summary: PolicySummary = Field(..., description="Policy data summary")
+
+    # AI-Generated Insights (NEW!)
+    ai_insights: Optional[AIInsights] = Field(None, description="AI-generated investment insights")
+    data_quality: Optional[DataQualityAssessment] = Field(None, description="Data quality assessment")
 
     # Execution metrics
     execution_metrics: Dict[str, Any] = Field(..., description="Execution metrics")

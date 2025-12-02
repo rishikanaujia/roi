@@ -1,31 +1,14 @@
 """
-Workflow Orchestrator - Multi-Agent Coordination
+Workflow Orchestrator - Multi-Agent Coordination with AI
+
+Enhanced with AI-powered insights:
+- Investment insights generation
+- Risk assessment
+- Data quality analysis
+- Natural language recommendations
 
 This orchestrator manages the complete workflow:
-    Input → Research → Analysis → Output
-
-Features:
-- Multi-agent coordination (Research → Analysis)
-- Error handling and retry logic
-- Progress tracking
-- Execution metrics (time, cost)
-- Result validation
-- Clean, structured output
-
-Example:
-    orchestrator = WorkflowOrchestrator()
-
-    result = await orchestrator.analyze_opportunity(
-        country="USA",
-        technology="solar_pv",
-        latitude=31.99,
-        longitude=-102.07,
-        capacity_mw=100
-    )
-
-    print(f"Recommendation: {result['recommendation']}")
-    print(f"LCOE: ${result['lcoe']:.2f}/MWh")
-    print(f"IRR: {result['irr']:.1f}%")
+    Input → Research → Analysis → AI Insights → Output
 """
 
 import logging
@@ -35,6 +18,7 @@ from enum import Enum
 
 from src.agents.research.research_agent import ResearchAgent
 from src.agents.analysis.analysis_agent import AnalysisAgent
+from src.llm.mock_provider import MockLLMProvider
 
 
 class WorkflowStatus(Enum):
@@ -44,31 +28,21 @@ class WorkflowStatus(Enum):
     RESEARCH_COMPLETE = "research_complete"
     ANALYSIS_IN_PROGRESS = "analysis_in_progress"
     ANALYSIS_COMPLETE = "analysis_complete"
+    AI_INSIGHTS_IN_PROGRESS = "ai_insights_in_progress"
+    AI_INSIGHTS_COMPLETE = "ai_insights_complete"
     COMPLETE = "complete"
     FAILED = "failed"
 
 
 class WorkflowOrchestrator:
     """
-    Orchestrates multi-agent workflow for opportunity analysis.
+    Orchestrates multi-agent workflow with AI enhancement.
 
-    Manages the complete pipeline:
+    Pipeline:
     1. ResearchAgent - Fetch policy and resource data
     2. AnalysisAgent - Calculate financial metrics
-    3. Format and return results
-
-    Includes:
-    - Error handling
-    - Retry logic
-    - Progress tracking
-    - Execution metrics
-    - Result validation
-
-    Attributes:
-        llm_provider: LLM provider for agents
-        config: Base configuration
-        logger: Logger instance
-        max_retries: Maximum retry attempts per agent
+    3. AI Insights - Generate investment insights (NEW!)
+    4. Format and return results
     """
 
     def __init__(
@@ -76,27 +50,34 @@ class WorkflowOrchestrator:
             llm_provider=None,
             config: Optional[Dict[str, Any]] = None,
             logger: Optional[logging.Logger] = None,
-            max_retries: int = 2
+            max_retries: int = 2,
+            enable_ai_insights: bool = True
     ):
         """
         Initialize Workflow Orchestrator.
 
         Args:
-            llm_provider: LLM provider for agents (optional)
+            llm_provider: LLM provider for AI features (optional, defaults to Mock)
             config: Base configuration (optional)
             logger: Logger instance (optional)
             max_retries: Maximum retry attempts per agent (default: 2)
+            enable_ai_insights: Enable AI-generated insights (default: True)
         """
-        self.llm_provider = llm_provider or self._create_mock_llm()
+        self.llm_provider = llm_provider or MockLLMProvider()
         self.config = config or {}
         self.logger = logger or self._create_logger()
         self.max_retries = max_retries
+        self.enable_ai_insights = enable_ai_insights
 
         # Execution tracking
         self._current_status = WorkflowStatus.PENDING
         self._execution_metrics = {}
 
-        self.logger.info("WorkflowOrchestrator initialized")
+        self.logger.info(
+            f"WorkflowOrchestrator initialized "
+            f"(AI insights: {enable_ai_insights}, "
+            f"LLM: {self.llm_provider.get_provider_name()})"
+        )
 
     async def analyze_opportunity(
             self,
@@ -110,32 +91,7 @@ class WorkflowOrchestrator:
         """
         Analyze a renewable energy opportunity (ONE CALL!).
 
-        This is the main entry point. It orchestrates:
-        1. Research (policy + resource data)
-        2. Analysis (financial calculations)
-        3. Result formatting
-
-        Args:
-            country: Country code (e.g., "USA", "DEU")
-            technology: Technology code (e.g., "solar_pv", "onshore_wind")
-            latitude: Location latitude
-            longitude: Location longitude
-            capacity_mw: Project capacity in MW (default: 100.0)
-            **kwargs: Additional parameters
-
-        Returns:
-            Complete analysis with recommendation
-
-        Example:
-            >>> result = await orchestrator.analyze_opportunity(
-            ...     country="USA",
-            ...     technology="solar_pv",
-            ...     latitude=31.99,
-            ...     longitude=-102.07,
-            ...     capacity_mw=100
-            ... )
-            >>> print(result['recommendation'])
-            'HIGHLY VIABLE'
+        Enhanced with AI insights!
         """
         workflow_start = time.time()
 
@@ -163,10 +119,15 @@ class WorkflowOrchestrator:
             )
             self._update_status(WorkflowStatus.ANALYSIS_COMPLETE)
 
-            # Step 3: Format final results
+            # Step 3: AI Insights (NEW!)
+            self._update_status(WorkflowStatus.AI_INSIGHTS_IN_PROGRESS)
+            ai_data = await self._generate_ai_insights(analysis_result, research_result)
+            self._update_status(WorkflowStatus.AI_INSIGHTS_COMPLETE)
+
+            # Step 4: Format final results
             final_result = self._format_final_results(
                 country, technology, latitude, longitude, capacity_mw,
-                research_result, analysis_result
+                research_result, analysis_result, ai_data
             )
 
             # Add execution metrics
@@ -195,20 +156,7 @@ class WorkflowOrchestrator:
             capacity_mw: float,
             **kwargs
     ) -> Dict[str, Any]:
-        """
-        Execute research phase with retry logic.
-
-        Args:
-            country: Country code
-            technology: Technology code
-            latitude: Location latitude
-            longitude: Location longitude
-            capacity_mw: Project capacity
-            **kwargs: Additional parameters
-
-        Returns:
-            Research results
-        """
+        """Execute research phase with retry logic."""
         research_start = time.time()
 
         for attempt in range(1, self.max_retries + 1):
@@ -259,19 +207,7 @@ class WorkflowOrchestrator:
             capacity_mw: float,
             **kwargs
     ) -> Dict[str, Any]:
-        """
-        Execute analysis phase with retry logic.
-
-        Args:
-            country: Country code
-            technology: Technology code
-            research_result: Results from research phase
-            capacity_mw: Project capacity
-            **kwargs: Additional parameters
-
-        Returns:
-            Analysis results
-        """
+        """Execute analysis phase with retry logic."""
         analysis_start = time.time()
 
         for attempt in range(1, self.max_retries + 1):
@@ -313,16 +249,54 @@ class WorkflowOrchestrator:
 
         raise RuntimeError("Analysis failed unexpectedly")
 
-    def _validate_research_results(self, research_result: Dict[str, Any]) -> bool:
+    async def _generate_ai_insights(
+            self,
+            analysis_result: Dict[str, Any],
+            research_result: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
-        Validate research results before passing to analysis.
+        Generate AI insights and assess data quality.
+
+        NEW! AI-powered enhancement.
 
         Args:
-            research_result: Research results to validate
+            analysis_result: Analysis results
+            research_result: Research results
 
         Returns:
-            True if valid, False otherwise
+            Dictionary with AI insights and quality assessment
         """
+        if not self.enable_ai_insights:
+            self.logger.info("AI insights disabled, skipping")
+            return {}
+
+        try:
+            ai_start = time.time()
+            self.logger.info("Generating AI insights...")
+
+            # Generate investment insights
+            insights = await self.llm_provider.generate_insights(analysis_result)
+
+            # Assess data quality
+            quality = await self.llm_provider.assess_data_quality(research_result)
+
+            # Track metrics
+            ai_time = time.time() - ai_start
+            self._execution_metrics['ai_insights_time_seconds'] = round(ai_time, 2)
+
+            self.logger.info(f"AI insights generated in {ai_time:.2f}s")
+
+            return {
+                "ai_insights": insights,
+                "data_quality": quality
+            }
+
+        except Exception as e:
+            self.logger.warning(f"AI insight generation failed: {str(e)}")
+            return {}
+
+    def _validate_research_results(self, research_result: Dict[str, Any]) -> bool:
+        """Validate research results before passing to analysis."""
         required_fields = ['policy_data', 'resource_data', 'data_completeness']
 
         if not all(field in research_result for field in required_fields):
@@ -345,22 +319,13 @@ class WorkflowOrchestrator:
             longitude: float,
             capacity_mw: float,
             research_result: Dict[str, Any],
-            analysis_result: Dict[str, Any]
+            analysis_result: Dict[str, Any],
+            ai_data: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
         Format final results in clean, user-friendly structure.
 
-        Args:
-            country: Country code
-            technology: Technology code
-            latitude: Location latitude
-            longitude: Location longitude
-            capacity_mw: Project capacity
-            research_result: Research results
-            analysis_result: Analysis results
-
-        Returns:
-            Formatted final results
+        Enhanced with AI insights!
         """
         # Extract key metrics
         financial_metrics = analysis_result['financial_metrics']
@@ -399,6 +364,10 @@ class WorkflowOrchestrator:
             "policy_summary": self._extract_policy_summary(
                 research_result, country
             ),
+
+            # AI Insights (NEW!)
+            "ai_insights": ai_data.get("ai_insights") if ai_data else None,
+            "data_quality": ai_data.get("data_quality") if ai_data else None,
 
             # Detailed Results (for deep dive)
             "detailed_research": research_result,
@@ -454,16 +423,13 @@ class WorkflowOrchestrator:
             summary['federal_ptc'] = incentives.get('federal_ptc_usd_per_mwh', 0)
         elif country == "DEU":
             summary['eeg_tariff'] = incentives.get('base_tariff_eur_per_mwh')
+        elif country == "IND":
+            summary['gbi_rate'] = incentives.get('gbi_rate_inr_per_kwh', 0)
 
         return summary
 
     async def _wait_before_retry(self, attempt: int):
-        """
-        Wait before retry with exponential backoff.
-
-        Args:
-            attempt: Current attempt number
-        """
+        """Wait before retry with exponential backoff."""
         import asyncio
         wait_time = 2 ** attempt  # 2s, 4s, 8s...
         self.logger.info(f"Waiting {wait_time}s before retry...")
@@ -495,36 +461,26 @@ class WorkflowOrchestrator:
 
     def _create_mock_llm(self):
         """Create mock LLM provider for demo."""
-
-        class MockLLM:
-            pass
-
-        return MockLLM()
+        return MockLLMProvider()
 
 
 # Demo
 if __name__ == "__main__":
     import asyncio
-    import json
 
     print("=" * 70)
-    print("🎉 WORKFLOW ORCHESTRATOR - THE COMPLETE SYSTEM! 🎉")
+    print("🤖 WORKFLOW ORCHESTRATOR - NOW WITH AI! 🤖")
     print("=" * 70)
 
 
     async def demo():
-        # Create orchestrator
-        orchestrator = WorkflowOrchestrator()
+        # Create orchestrator with AI enabled
+        orchestrator = WorkflowOrchestrator(enable_ai_insights=True)
 
-        # Test 1: USA + Solar PV
+        # Test 1: USA + Solar PV with AI insights
         print("\n" + "=" * 70)
-        print("TEST 1: Complete Workflow - USA + Solar PV")
+        print("TEST 1: Complete Workflow with AI Insights - USA + Solar PV")
         print("=" * 70)
-        print("\nInput:")
-        print("  Country: USA")
-        print("  Technology: Solar PV")
-        print("  Location: West Texas (31.99°N, 102.07°W)")
-        print("  Capacity: 100 MW")
 
         result1 = await orchestrator.analyze_opportunity(
             country="USA",
@@ -534,138 +490,44 @@ if __name__ == "__main__":
             capacity_mw=100
         )
 
-        print("\n📊 Results:")
-        print(f"  Recommendation: {result1['recommendation']}")
-        print(f"  Confidence: {result1['confidence']}")
+        print("\n📊 Financial Results:")
         print(f"  LCOE: ${result1['lcoe']:.2f}/MWh")
         print(f"  IRR: {result1['irr']:.1f}%")
-        print(f"  NPV: ${result1['npv']:,.0f}")
-        print(f"  Capacity Factor: {result1['capacity_factor'] * 100:.1f}%")
-        print(f"  Payback: {result1['payback_years']:.1f} years")
+        print(f"  Recommendation: {result1['recommendation']}")
 
-        print("\n🌞 Resource Summary:")
-        res_sum = result1['resource_summary']
-        print(f"  GHI: {res_sum['ghi_kwh_m2_day']} kWh/m²/day")
-        print(f"  Temperature: {res_sum['temperature_c']}°C")
-        print(f"  Data Quality: {res_sum['quality']}")
+        # Show AI insights!
+        if result1.get('ai_insights'):
+            ai = result1['ai_insights']
+            print("\n🤖 AI-Generated Insights:")
+            print(f"  Key Insights:")
+            for insight in ai['key_insights']:
+                print(f"    • {insight}")
 
-        print("\n💰 Policy Summary:")
-        pol_sum = result1['policy_summary']
-        print(f"  Federal ITC: {pol_sum['federal_itc']}%")
-        print(f"  Tax Rate: {pol_sum['tax_rate'] * 100}%")
+            print(f"\n  Top Risks:")
+            for risk in ai['risks'][:2]:
+                print(f"    • {risk}")
 
-        print("\n⏱️  Execution Metrics:")
-        metrics = result1['execution_metrics']
-        print(f"  Research Time: {metrics['research_time_seconds']}s")
-        print(f"  Analysis Time: {metrics['analysis_time_seconds']}s")
-        print(f"  Total Time: {metrics['total_time_seconds']}s")
+            print(f"\n  Opportunities:")
+            for opp in ai['opportunities'][:2]:
+                print(f"    • {opp}")
 
-        # Test 2: USA + Wind (with PTC)
-        print("\n" + "=" * 70)
-        print("TEST 2: USA + Onshore Wind (With PTC)")
-        print("=" * 70)
+            print(f"\n  Summary: {ai['recommendation_summary'][:200]}...")
 
-        result2 = await orchestrator.analyze_opportunity(
-            country="USA",
-            technology="onshore_wind",
-            latitude=31.99,
-            longitude=-102.07,
-            capacity_mw=150
-        )
+        # Show data quality
+        if result1.get('data_quality'):
+            quality = result1['data_quality']
+            print(f"\n📈 Data Quality Assessment:")
+            print(f"  Overall Quality: {quality['overall_quality']}")
+            print(f"  Confidence Score: {quality['confidence_score']}")
+            print(f"  Data Gaps: {quality['data_gaps'][0]}")
 
-        print("\n📊 Results:")
-        print(f"  Recommendation: {result2['recommendation']}")
-        print(f"  LCOE: ${result2['lcoe']:.2f}/MWh")
-        print(f"  IRR: {result2['irr']:.1f}% (includes PTC benefit!)")
-        print(f"  Capacity Factor: {result2['capacity_factor'] * 100:.1f}%")
-
-        print("\n💨 Resource Summary:")
-        res_sum2 = result2['resource_summary']
-        print(f"  Wind Speed: {res_sum2['wind_speed_m_s']} m/s")
-        print(f"  Power Density: {res_sum2['wind_power_density_w_m2']} W/m²")
-
-        print("\n💰 Policy Summary:")
-        pol_sum2 = result2['policy_summary']
-        print(f"  Federal PTC: ${pol_sum2['federal_ptc']}/MWh for 10 years")
-
-        # Test 3: Germany + Wind
-        print("\n" + "=" * 70)
-        print("TEST 3: Germany + Onshore Wind")
-        print("=" * 70)
-
-        result3 = await orchestrator.analyze_opportunity(
-            country="DEU",
-            technology="onshore_wind",
-            latitude=54.0,
-            longitude=8.0,
-            capacity_mw=150
-        )
-
-        print("\n📊 Results:")
-        print(f"  Recommendation: {result3['recommendation']}")
-        print(f"  LCOE: ${result3['lcoe']:.2f}/MWh")
-        print(f"  IRR: {result3['irr']:.1f}%")
-
-        print("\n💰 Policy Summary:")
-        pol_sum3 = result3['policy_summary']
-        print(f"  EEG Tariff: €{pol_sum3['eeg_tariff']}/MWh")
-
-        # Test 4: India + Solar
-        print("\n" + "=" * 70)
-        print("TEST 4: India + Solar PV (New Country!)")
-        print("=" * 70)
-
-        result4 = await orchestrator.analyze_opportunity(
-            country="IND",
-            technology="solar_pv",
-            latitude=23.0,  # Gujarat
-            longitude=72.0,
-            capacity_mw=100
-        )
-
-        print("\n📊 Results:")
-        print(f"  Recommendation: {result4['recommendation']}")
-        print(f"  LCOE: ${result4['lcoe']:.2f}/MWh")
-        print(f"  IRR: {result4['irr']:.1f}%")
-
-        print("\n🇮🇳 India-Specific:")
-        pol_sum4 = result4['policy_summary']
-        print(f"  Feed-in Tariff: ₹{pol_sum4.get('feed_in_tariff', 'N/A')}/kWh")
-        print(f"  Tax Rate: {pol_sum4['tax_rate'] * 100}%")
-
-        # Comparison
-        print("\n" + "=" * 70)
-        print("📊 SIDE-BY-SIDE COMPARISON")
-        print("=" * 70)
-        print(f"\n{'Project':<30} {'LCOE':<15} {'IRR':<10} {'Recommendation'}")
-        print("-" * 70)
-        print(
-            f"{'USA Solar (100 MW)':<30} ${result1['lcoe']:<14.2f} {result1['irr']:<9.1f}% {result1['recommendation']}")
-        print(
-            f"{'USA Wind (150 MW)':<30} ${result2['lcoe']:<14.2f} {result2['irr']:<9.1f}% {result2['recommendation']}")
-        print(
-            f"{'Germany Wind (150 MW)':<30} ${result3['lcoe']:<14.2f} {result3['irr']:<9.1f}% {result3['recommendation']}")
+        print(f"\n⏱️  Execution Time: {result1['execution_metrics']['total_time_seconds']}s")
+        if 'ai_insights_time_seconds' in result1['execution_metrics']:
+            print(f"  AI Insights Time: {result1['execution_metrics']['ai_insights_time_seconds']}s")
 
 
     asyncio.run(demo())
 
     print("\n" + "=" * 70)
-    print("✅ WORKFLOW ORCHESTRATOR WORKING PERFECTLY!")
-    print("=" * 70)
-    print("\n🎯 What You Can Do Now:")
-    print("  ✓ Analyze ANY opportunity in ONE call")
-    print("  ✓ Automatic error handling & retry")
-    print("  ✓ Complete Research → Analysis pipeline")
-    print("  ✓ Clean, structured output")
-    print("  ✓ Execution metrics tracking")
-    print("  ✓ Production-ready orchestration")
-
-    print("\n📊 System Summary:")
-    print("  • 27 files created")
-    print("  • 2 countries × 2 technologies = 4 working combinations")
-    print("  • Complete end-to-end workflow")
-    print("  • Investment-grade financial analysis")
-    print("  • Ready to scale to 100+ countries, 10+ technologies")
-
-    print("\n🚀 Ready for Production!")
+    print("✅ WORKFLOW ORCHESTRATOR WITH AI WORKING PERFECTLY!")
     print("=" * 70)

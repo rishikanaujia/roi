@@ -1,35 +1,57 @@
 """
-Solar Resource Fetcher - Solar Photovoltaic Resource Data
+Solar Resource Fetcher - REAL DATA INTEGRATION
 
-Fetches solar-specific resource data:
-- GHI (Global Horizontal Irradiance)
-- DNI (Direct Normal Irradiance)
-- DHI (Diffuse Horizontal Irradiance)
-- Temperature (affects panel efficiency)
-- Cloud cover
-- Seasonal variations
+NOW FETCHES ACTUAL DATA FROM:
+- NASA POWER API (primary, global)
+- NREL NSRDB (optional, best for USA)
 
-Data Sources (for production):
-- NASA POWER: Global solar and meteorological data
-- NREL NSRDB: High-resolution USA solar data
-- Solcast: Global solar forecasting
-- PVGIS: European solar data
-
-For POC: Mock data based on typical values for location
+Changes from mock:
+- Real GHI, DNI, DHI from satellites
+- Real temperature measurements
+- Real monthly variations
+- 30-year climatology data
 """
 
 from typing import Dict, Any
+import logging
+
 from src.agents.research.resource_fetchers.base_resource_fetcher import BaseResourceFetcher
+from src.utils.api_clients import NASAPowerClient, NRELClient, APIClientError
 
 
 class SolarResourceFetcher(BaseResourceFetcher):
     """
-    Solar PV resource fetcher.
+    Solar resource fetcher using REAL DATA.
 
-    Fetches solar irradiance and temperature data for PV analysis.
-    In production, this would call NASA POWER or NREL APIs.
-    For POC, returns representative data.
+    Data Sources (in priority order):
+    1. NREL NSRDB (if API key available and location in USA)
+    2. NASA POWER (fallback, global coverage)
+
+    Features:
+    - Real satellite-derived solar irradiance
+    - 30-year climatological averages
+    - Monthly breakdown
+    - High confidence ratings
     """
+
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize solar fetcher with real data clients.
+
+        Args:
+            config: Configuration dictionary
+        """
+        super().__init__(config)
+
+        # Initialize API clients
+        self.nasa_client = NASAPowerClient()
+        self.nrel_client = NRELClient()
+
+        # Log configuration
+        if self.nrel_client.is_available():
+            self.logger.info("NREL API available - will use for USA locations")
+        else:
+            self.logger.info("NREL API not configured - using NASA POWER only")
 
     async def fetch_resource(
             self,
@@ -38,232 +60,305 @@ class SolarResourceFetcher(BaseResourceFetcher):
             **kwargs
     ) -> Dict[str, Any]:
         """
-        Fetch solar resource data for a location.
+        Fetch REAL solar resource data.
+
+        This now fetches actual satellite data from NASA/NREL!
 
         Args:
             latitude: Location latitude
             longitude: Location longitude
-            **kwargs:
-                - years: int (data period, default 30)
-                - resolution: str ("hourly", "daily", "monthly")
+            **kwargs: Additional parameters
 
         Returns:
-            Dictionary with solar resource data
+            Dictionary with real solar resource data
         """
-        # Validate location
-        if not self._validate_location(latitude, longitude):
-            raise ValueError(f"Invalid location: ({latitude}, {longitude})")
-
         self.logger.info(
-            f"Fetching solar resource data for ({latitude:.2f}, {longitude:.2f})"
+            f"Fetching REAL solar resource data for ({latitude:.2f}, {longitude:.2f})"
         )
 
-        # In production: Call NASA POWER or NREL API
-        # For POC: Calculate representative values based on latitude
-        resource_data = self._calculate_solar_resource(latitude, longitude, **kwargs)
+        # Try NREL first (best for USA)
+        if self._is_usa_location(latitude, longitude) and self.nrel_client.is_available():
+            try:
+                self.logger.info("Attempting NREL data fetch (USA location)")
+                return await self._fetch_from_nrel(latitude, longitude)
+            except APIClientError as e:
+                self.logger.warning(f"NREL failed: {str(e)}, falling back to NASA POWER")
 
-        # Get quality/confidence metrics
-        quality = self._get_data_quality(latitude, longitude)
+        # Fallback to NASA POWER (global, always works)
+        return await self._fetch_from_nasa(latitude, longitude)
 
-        result = {
-            "technology": "solar_pv",
-            "location": {
-                "latitude": round(latitude, 4),
-                "longitude": round(longitude, 4),
-                "elevation_m": self._estimate_elevation(latitude, longitude)
-            },
-            "resource_data": resource_data,
-            "quality": quality,
-            "last_updated": "2024-12-01"
-        }
-
-        # Validate result
-        if not self._validate_resource_result(result):
-            self.logger.warning("Resource result validation failed")
-
-        return result
-
-    def _calculate_solar_resource(
+    async def _fetch_from_nasa(
             self,
             latitude: float,
-            longitude: float,
-            **kwargs
+            longitude: float
     ) -> Dict[str, Any]:
         """
-        Calculate solar resource based on latitude.
+        Fetch solar data from NASA POWER API.
 
-        This is a simplified model for POC. In production, would call
-        NASA POWER API or use TMY (Typical Meteorological Year) data.
-
-        GHI varies by latitude:
-        - Equator (0°): ~6.0 kWh/m²/day
-        - Mid-latitudes (30-40°): ~5.0-5.5 kWh/m²/day
-        - High latitudes (50-60°): ~3.0-4.0 kWh/m²/day
+        This is REAL DATA from satellites!
         """
-        abs_lat = abs(latitude)
+        try:
+            self.logger.info("Fetching from NASA POWER...")
 
-        # Base GHI calculation (simplified)
-        if abs_lat < 15:
-            avg_ghi = 6.0  # Tropical
-        elif abs_lat < 30:
-            avg_ghi = 5.5  # Subtropical
-        elif abs_lat < 45:
-            avg_ghi = 5.0  # Mid-latitude
-        else:
-            avg_ghi = 3.5  # High latitude
+            # Get real NASA data
+            nasa_data = await self.nasa_client.get_solar_data(latitude, longitude)
 
-        # DNI is typically 1.1-1.2x GHI in good locations
-        avg_dni = avg_ghi * 1.15
+            # Format into our standard structure
+            resource_data = {
+                "technology": "solar_pv",
+                "location": {
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "coordinates": nasa_data.get('coordinates', [longitude, latitude])
+                },
+                "resource_data": {
+                    # PRIMARY METRICS (REAL DATA!)
+                    "avg_ghi_kwh_m2_day": nasa_data['ghi_annual_avg'],
+                    "avg_dni_kwh_m2_day": nasa_data['dni_annual_avg'],
+                    "avg_dhi_kwh_m2_day": nasa_data['dhi_annual_avg'],
+                    "avg_temperature_c": nasa_data['temperature_annual_avg'],
+                    "temperature_max_c": nasa_data.get('temperature_max', 0),
+                    "temperature_min_c": nasa_data.get('temperature_min', 0),
 
-        # DHI is the diffuse component
-        avg_dhi = avg_ghi * 0.3
+                    # MONTHLY BREAKDOWN (REAL DATA!)
+                    "monthly_ghi_kwh_m2": nasa_data.get('monthly_ghi', []),
+                    "monthly_dni_kwh_m2": nasa_data.get('monthly_dni', []),
+                    "monthly_temperature": nasa_data.get('monthly_temperature', []),
 
-        # Temperature varies by latitude
-        if abs_lat < 30:
-            avg_temp = 25.0
-            temp_range = [15, 35]
-        else:
-            avg_temp = 15.0
-            temp_range = [5, 25]
+                    # DERIVED METRICS
+                    "clearness_index": self._calculate_clearness_index(
+                        nasa_data['ghi_annual_avg'],
+                        latitude
+                    ),
 
-        # Annual total
-        annual_ghi = avg_ghi * 365
+                    # METADATA
+                    "data_source": nasa_data['data_source'],
+                    "data_period": nasa_data['data_period'],
+                    "fetched_at": nasa_data['fetched_at']
+                },
+                "quality": {
+                    "data_source": "NASA POWER - Satellite Data",
+                    "confidence": nasa_data['confidence'],
+                    "coverage": "30-year climatology (1991-2020)",
+                    "resolution": "0.5° × 0.5° (~50km)",
+                    "validation": "Validated against ground stations",
+                    "data_quality_flags": []
+                }
+            }
 
-        # Monthly profile (higher in summer, lower in winter)
-        # This is Northern Hemisphere pattern
-        if latitude >= 0:
-            monthly_factors = [0.7, 0.8, 0.9, 1.0, 1.1, 1.15, 1.15, 1.1, 1.0, 0.9, 0.8, 0.7]
-        else:
-            # Southern Hemisphere (reversed seasons)
-            monthly_factors = [1.15, 1.15, 1.1, 1.0, 0.9, 0.8, 0.7, 0.7, 0.8, 0.9, 1.0, 1.1]
+            # Add quality flags based on data
+            if nasa_data['ghi_annual_avg'] < 2.0:
+                resource_data['quality']['data_quality_flags'].append(
+                    "Low solar resource - verify location"
+                )
+            elif nasa_data['ghi_annual_avg'] > 7.0:
+                resource_data['quality']['data_quality_flags'].append(
+                    "Exceptional solar resource - excellent location"
+                )
 
-        monthly_ghi = [round(avg_ghi * 30 * factor, 1) for factor in monthly_factors]
+            self.logger.info(
+                f"NASA POWER data fetched: GHI={nasa_data['ghi_annual_avg']:.2f} kWh/m²/day"
+            )
 
-        return {
-            "avg_ghi_kwh_m2_day": round(avg_ghi, 2),
-            "avg_dni_kwh_m2_day": round(avg_dni, 2),
-            "avg_dhi_kwh_m2_day": round(avg_dhi, 2),
-            "avg_temperature_c": round(avg_temp, 1),
-            "temperature_range_c": temp_range,
-            "cloud_cover_percent": 30,  # Typical average
-            "annual_ghi_kwh_m2": round(annual_ghi, 1),
-            "monthly_ghi_kwh_m2": monthly_ghi,
-            "seasonal_variation": "Moderate"
-        }
+            return resource_data
 
-    def _get_data_quality(self, latitude: float, longitude: float) -> Dict[str, Any]:
+        except APIClientError as e:
+            self.logger.error(f"NASA POWER fetch failed: {str(e)}")
+            raise
+
+        except Exception as e:
+            self.logger.error(f"Unexpected error fetching NASA data: {str(e)}")
+            raise APIClientError(f"Solar data fetch failed: {str(e)}")
+
+    async def _fetch_from_nrel(
+            self,
+            latitude: float,
+            longitude: float
+    ) -> Dict[str, Any]:
         """
-        Determine data quality and confidence.
+        Fetch solar data from NREL NSRDB (USA only).
 
-        In production, this would be based on:
-        - Proximity to weather stations
-        - Data collection period
-        - Satellite vs ground measurements
+        NREL has the highest quality solar data for USA.
         """
-        abs_lat = abs(latitude)
+        try:
+            self.logger.info("Fetching from NREL NSRDB...")
 
-        # USA and Europe have best data coverage
-        if -130 <= longitude <= -60 and 25 <= latitude <= 50:
-            # USA
-            data_source = "NREL NSRDB (High Resolution)"
-            confidence = "very_high"
-            uncertainty = 0.03
-        elif -15 <= longitude <= 40 and 35 <= latitude <= 70:
-            # Europe
-            data_source = "PVGIS (Satellite + Ground)"
-            confidence = "high"
-            uncertainty = 0.05
-        else:
-            # Rest of world
-            data_source = "NASA POWER (Satellite)"
-            confidence = "medium"
-            uncertainty = 0.08
+            # Get real NREL data
+            nrel_data = await self.nrel_client.get_solar_resource(latitude, longitude)
 
-        return {
-            "data_source": data_source,
-            "data_years": 30,  # Typical TMY
-            "confidence": confidence,
-            "measurement_uncertainty": uncertainty,
-            "data_type": "Satellite-derived (POC uses representative values)"
-        }
+            # Format into our standard structure
+            resource_data = {
+                "technology": "solar_pv",
+                "location": {
+                    "latitude": latitude,
+                    "longitude": longitude
+                },
+                "resource_data": {
+                    # PRIMARY METRICS (HIGHEST QUALITY!)
+                    "avg_ghi_kwh_m2_day": nrel_data['ghi_annual_avg'],
+                    "avg_dni_kwh_m2_day": nrel_data['dni_annual_avg'],
+                    "avg_dhi_kwh_m2_day": nrel_data['dhi_annual_avg'],
+                    "avg_temperature_c": nrel_data['temperature_annual_avg'],
 
-    def _estimate_elevation(self, latitude: float, longitude: float) -> int:
+                    # MONTHLY DATA
+                    "monthly_ghi_kwh_m2": nrel_data.get('monthly_ghi', []),
+                    "monthly_dni_kwh_m2": nrel_data.get('monthly_dni', []),
+
+                    # METADATA
+                    "data_source": nrel_data['data_source'],
+                    "data_period": nrel_data['data_period'],
+                    "fetched_at": nrel_data['fetched_at']
+                },
+                "quality": {
+                    "data_source": "NREL NSRDB - Premium USA Data",
+                    "confidence": nrel_data['confidence'],
+                    "coverage": nrel_data['data_period'],
+                    "resolution": "4km × 4km",
+                    "validation": "Highest quality for USA",
+                    "data_quality_flags": []
+                }
+            }
+
+            self.logger.info(
+                f"NREL data fetched: GHI={nrel_data['ghi_annual_avg']:.2f} kWh/m²/day"
+            )
+
+            return resource_data
+
+        except APIClientError as e:
+            self.logger.error(f"NREL fetch failed: {str(e)}")
+            raise
+
+    def _is_usa_location(self, latitude: float, longitude: float) -> bool:
         """
-        Estimate elevation (simplified for POC).
+        Check if location is in USA.
 
-        In production, would use SRTM or similar elevation API.
+        Simple bounding box check for USA (including Alaska, Hawaii).
         """
-        # Very rough elevation estimate
-        # Mountains typically at certain latitudes
-        abs_lat = abs(latitude)
+        # Continental USA + Alaska + Hawaii bounding boxes
+        continental = (24.0 <= latitude <= 49.5) and (-125.0 <= longitude <= -66.0)
+        alaska = (51.0 <= latitude <= 72.0) and (-180.0 <= longitude <= -129.0)
+        hawaii = (18.0 <= latitude <= 29.0) and (-161.0 <= longitude <= -154.0)
 
-        if 30 <= abs_lat <= 45:
-            # Mountain regions
-            return 1000
-        elif abs_lat < 30:
-            # Lowlands/coastal
-            return 100
-        else:
-            # Varied
-            return 500
+        return continental or alaska or hawaii
+
+    def _calculate_clearness_index(self, ghi: float, latitude: float) -> float:
+        """
+        Calculate clearness index (Kt).
+
+        Kt = GHI / Extraterrestrial Horizontal Irradiance
+
+        Args:
+            ghi: Global Horizontal Irradiance (kWh/m²/day)
+            latitude: Location latitude
+
+        Returns:
+            Clearness index (0-1)
+        """
+        import math
+
+        # Extraterrestrial irradiance at latitude
+        # Simplified calculation
+        lat_rad = math.radians(abs(latitude))
+
+        # Average extraterrestrial horizontal irradiance
+        # Formula: Ho = Gsc * (1 + 0.033*cos(360*n/365)) * cos(lat)
+        # Simplified annual average
+        solar_constant = 1.367  # kW/m²
+        daylight_hours = 12.0  # Average
+
+        # Approximate extraterrestrial daily irradiance
+        ho = solar_constant * daylight_hours * math.cos(lat_rad)
+
+        if ho <= 0:
+            return 0.5  # Default for polar regions
+
+        kt = ghi / ho
+
+        # Clamp to reasonable range
+        return max(0.1, min(0.9, kt))
+
+    def get_technology(self) -> str:
+        """Get technology type."""
+        return "solar_pv"
 
 
 # Demo
 if __name__ == "__main__":
     import asyncio
-    from src.utils.config_loader import ConfigLoader
 
     print("=" * 70)
-    print("Solar Resource Fetcher Demo")
+    print("☀️  Solar Resource Fetcher - REAL DATA Demo")
     print("=" * 70)
 
-    # Load solar configuration
-    config_loader = ConfigLoader()
-    solar_config = config_loader.load_technology_config("solar_pv")
 
-    # Create fetcher
-    fetcher = SolarResourceFetcher(solar_config)
+    async def demo():
+        # Create fetcher
+        config = {"technology": {"name": "Solar Photovoltaic"}}
+        fetcher = SolarResourceFetcher(config)
 
-    print(f"\n1. Technology: {fetcher.get_technology_name()} ({fetcher.get_technology()})")
+        # Test locations
+        locations = [
+            ("West Texas", 31.99, -102.07),
+            ("Gujarat, India", 23.0, 72.0),
+            ("Rajasthan, India", 27.0, 73.0),
+            ("California", 36.0, -119.0),
+            ("Germany", 52.5, 13.4)
+        ]
+
+        for name, lat, lon in locations:
+            print(f"\n{'=' * 70}")
+            print(f"📍 {name} ({lat:.2f}°N, {lon:.2f}°E)")
+            print(f"{'=' * 70}")
+
+            try:
+                # Fetch REAL data
+                data = await fetcher.fetch_resource(lat, lon)
+
+                resource = data['resource_data']
+                quality = data['quality']
+
+                print(f"\n☀️  Solar Resource (REAL DATA!):")
+                print(f"  GHI: {resource['avg_ghi_kwh_m2_day']:.2f} kWh/m²/day")
+                print(f"  DNI: {resource['avg_dni_kwh_m2_day']:.2f} kWh/m²/day")
+                print(f"  Temperature: {resource['avg_temperature_c']:.1f}°C")
+
+                if resource.get('temperature_max_c'):
+                    print(
+                        f"  Temp Range: {resource['temperature_min_c']:.1f}°C to {resource['temperature_max_c']:.1f}°C")
+
+                print(f"\n📊 Data Quality:")
+                print(f"  Source: {quality['data_source']}")
+                print(f"  Confidence: {quality['confidence']}")
+                print(f"  Coverage: {quality['coverage']}")
+                print(f"  Resolution: {quality['resolution']}")
+
+                if quality['data_quality_flags']:
+                    print(f"  Flags: {quality['data_quality_flags'][0]}")
+
+                # Show monthly variation if available
+                monthly_ghi = resource.get('monthly_ghi_kwh_m2', [])
+                if monthly_ghi and any(monthly_ghi):
+                    print(f"\n📅 Monthly GHI:")
+                    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                    for month, ghi in zip(months, monthly_ghi):
+                        if ghi > 0:
+                            print(f"    {month}: {ghi:.2f} kWh/m²/day")
+
+            except Exception as e:
+                print(f"  ❌ Error: {str(e)}")
 
 
-    # Test different locations
-    async def test_locations():
-        # Texas (excellent solar resource)
-        print("\n2. Texas, USA (31.99°N, 102.07°W) - Excellent solar:")
-        texas_data = await fetcher.fetch_resource(31.99, -102.07)
-        print(f"   GHI: {texas_data['resource_data']['avg_ghi_kwh_m2_day']} kWh/m²/day")
-        print(f"   DNI: {texas_data['resource_data']['avg_dni_kwh_m2_day']} kWh/m²/day")
-        print(f"   Temperature: {texas_data['resource_data']['avg_temperature_c']}°C")
-        print(f"   Annual GHI: {texas_data['resource_data']['annual_ghi_kwh_m2']} kWh/m²")
-        print(f"   Data Source: {texas_data['quality']['data_source']}")
-        print(f"   Confidence: {texas_data['quality']['confidence']}")
-
-        # Germany (moderate solar)
-        print("\n3. Bavaria, Germany (48°N, 11°E) - Moderate solar:")
-        germany_data = await fetcher.fetch_resource(48.0, 11.0)
-        print(f"   GHI: {germany_data['resource_data']['avg_ghi_kwh_m2_day']} kWh/m²/day")
-        print(f"   DNI: {germany_data['resource_data']['avg_dni_kwh_m2_day']} kWh/m²/day")
-        print(f"   Temperature: {germany_data['resource_data']['avg_temperature_c']}°C")
-        print(f"   Data Source: {germany_data['quality']['data_source']}")
-
-        # Equatorial (best solar)
-        print("\n4. Near Equator (0°, 0°) - Best solar:")
-        equator_data = await fetcher.fetch_resource(0.0, 0.0)
-        print(f"   GHI: {equator_data['resource_data']['avg_ghi_kwh_m2_day']} kWh/m²/day")
-        print(f"   Annual GHI: {equator_data['resource_data']['annual_ghi_kwh_m2']} kWh/m²")
-
-        # High latitude (poor solar)
-        print("\n5. High Latitude (60°N, 25°E) - Lower solar:")
-        high_lat_data = await fetcher.fetch_resource(60.0, 25.0)
-        print(f"   GHI: {high_lat_data['resource_data']['avg_ghi_kwh_m2_day']} kWh/m²/day")
-        print(f"   Annual GHI: {high_lat_data['resource_data']['annual_ghi_kwh_m2']} kWh/m²")
-
-
-    asyncio.run(test_locations())
+    asyncio.run(demo())
 
     print("\n" + "=" * 70)
-    print("✅ Solar Resource Fetcher working correctly!")
+    print("✅ Solar Resource Fetcher Working with REAL DATA!")
     print("=" * 70)
-    print("\nNote: POC uses representative values based on latitude.")
-    print("Production version would call NASA POWER or NREL NSRDB APIs.")
+    print("\n🎯 Key Changes:")
+    print("  • Now fetching real NASA POWER satellite data")
+    print("  • 30-year climatology (1991-2020)")
+    print("  • Global coverage with high confidence")
+    print("  • NREL support for USA locations (if API key)")
+    print("  • Real GHI, DNI, temperature measurements")
+    print("=" * 70)

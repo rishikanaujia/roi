@@ -3,9 +3,10 @@ API Routes - Endpoint Definitions
 
 NOW USING REAL LLM FROM APP STATE!
 """
+import logging
 
-from fastapi import APIRouter, HTTPException, status, Request
-from typing import Dict, Any
+from fastapi import APIRouter, HTTPException, status, Request, Query
+from typing import Dict, Any, List
 
 from src.api.models import (
     AnalyzeRequest,
@@ -20,6 +21,7 @@ from src.agents.research.resource_fetchers.factory import ResourceFetcherFactory
 
 # Create router
 router = APIRouter(prefix="/api/v1", tags=["Analysis"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -426,3 +428,60 @@ def _create_comparison_summary(results: list) -> Dict[str, Any]:
             for p in projects
         ]
     }
+
+
+@router.post("/compare-countries", response_model=Dict[str, Any])
+async def compare_countries(
+        request: Request,
+        countries: List[str] = Query(
+            ...,
+            description="List of country codes to compare (e.g., ['USA', 'IND', 'DEU'])",
+            min_items=2,
+            max_items=10
+        )
+):
+    """
+    Compare multiple countries for renewable energy investment.
+
+    This endpoint:
+    1. Analyzes representative locations for each country
+    2. Aggregates results by country
+    3. Uses AI to rank countries with detailed justification
+    4. Verifies ranking for bias and consistency
+
+    Example request:
+```
+    POST /api/v1/compare-countries?countries=USA&countries=IND&countries=DEU
+```
+
+    Returns:
+    - Country-level analysis reports
+    - AI-powered ranking with justification
+    - Verification results
+    - Methodology description
+    """
+    try:
+        logger.info(f"Comparing countries: {', '.join(countries)}")
+
+        # Get LLM provider from app state
+        llm_provider = getattr(request.app.state, 'llm_provider', None)
+
+        # Create orchestrator
+        from src.orchestration.country_comparison_orchestrator import CountryComparisonOrchestrator
+        orchestrator = CountryComparisonOrchestrator(llm_provider=llm_provider)
+
+        # Run comparison
+        result = await orchestrator.compare_countries(countries)
+
+        logger.info(
+            f"Country comparison complete: {result['comparison_summary']['total_countries_analyzed']} countries"
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Country comparison failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Country comparison failed: {str(e)}"
+        )

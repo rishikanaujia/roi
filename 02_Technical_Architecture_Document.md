@@ -202,12 +202,12 @@ workflow = StateGraph(OpportunityState)
 # Add nodes
 workflow.add_node("research", research_node)
 workflow.add_node("analysis", analysis_node)
-workflow.add_node("peer_review", peer_review_node)
+workflow.add_node("ranking", peer_review_node)
 
 # Define edges
 workflow.add_edge("research", "analysis")
-workflow.add_edge("analysis", "peer_review")
-workflow.add_edge("peer_review", END)
+workflow.add_edge("analysis", "ranking")
+workflow.add_edge("ranking", END)
 
 # Compile
 app = workflow.compile()
@@ -555,7 +555,7 @@ class AgentFactory:
     _registry = {
         "research": ResearchAgent,
         "analysis": AnalysisAgent,
-        "peer_review": PeerReviewAgent
+        "ranking": PeerReviewAgent
     }
     
     @classmethod

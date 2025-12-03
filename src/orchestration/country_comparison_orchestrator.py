@@ -119,13 +119,11 @@ class CountryComparisonOrchestrator:
         # Step 4: Aggregate results by country
         country_reports = self._aggregate_by_country(location_analyses, validated_countries)
 
-        # Step 5: Rank countries (will be implemented by ranking agent)
-        # For now, return basic ranking based on average IRR
-        ranking = self._create_basic_ranking(country_reports)
+        # Step 5: Rank countries using AI (or fallback if no LLM)
+        ranking = await self._create_ranking(country_reports)
 
-        # Step 6: Create verification (will be implemented by verification agent)
-        # For now, return basic verification
-        verification = self._create_basic_verification(ranking, country_reports)
+        # Step 6: Verify ranking using AI (or fallback if no LLM)
+        verification = await self._create_verification(ranking, country_reports)
 
         elapsed_time = (datetime.now() - start_time).total_seconds()
 
@@ -412,6 +410,36 @@ class CountryComparisonOrchestrator:
 
         return country_reports
 
+    async def _create_ranking(
+            self,
+            country_reports: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Create ranking using AI if available, otherwise fallback.
+
+        Args:
+            country_reports: Country analysis reports
+
+        Returns:
+            Ranking with justification
+        """
+        if self.llm_provider:
+            # Use AI ranking agent
+            try:
+                from src.agents.ranking.ranking_agent import RankingAgent
+
+                self.logger.info("Using AI Ranking Agent (GPT-4)...")
+                ranking_agent = RankingAgent(self.llm_provider)
+                return await ranking_agent.rank_countries(country_reports)
+
+            except Exception as e:
+                self.logger.error(f"AI ranking failed: {str(e)}, using fallback")
+                return self._create_basic_ranking(country_reports)
+        else:
+            # No LLM provider - use basic ranking
+            self.logger.info("No LLM provider - using basic algorithmic ranking")
+            return self._create_basic_ranking(country_reports)
+
     def _create_basic_ranking(
             self,
             country_reports: Dict[str, Dict[str, Any]]
@@ -478,6 +506,38 @@ class CountryComparisonOrchestrator:
             "ranked_countries": scores
         }
 
+    async def _create_verification(
+            self,
+            ranking: Dict[str, Any],
+            country_reports: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Verify ranking using AI if available, otherwise fallback.
+
+        Args:
+            ranking: Ranking results
+            country_reports: Country analysis reports
+
+        Returns:
+            Verification results
+        """
+        if self.llm_provider:
+            # Use AI verification agent
+            try:
+                from src.agents.verification.verification_agent import VerificationAgent
+
+                self.logger.info("Using AI Verification Agent (GPT-4)...")
+                verification_agent = VerificationAgent(self.llm_provider)
+                return await verification_agent.verify_ranking(ranking, country_reports)
+
+            except Exception as e:
+                self.logger.error(f"AI verification failed: {str(e)}, using fallback")
+                return self._create_basic_verification(ranking, country_reports)
+        else:
+            # No LLM provider - use basic verification
+            self.logger.info("No LLM provider - using basic rule-based verification")
+            return self._create_basic_verification(ranking, country_reports)
+
     def _create_basic_verification(
             self,
             ranking: Dict[str, Any],
@@ -500,17 +560,32 @@ class CountryComparisonOrchestrator:
 
         ranked = ranking['ranked_countries']
 
+        # Build metrics lookup from country reports
+        metrics_by_country = {
+            code: report['aggregate_metrics']
+            for code, report in country_reports.items()
+        }
+
         for i in range(len(ranked) - 1):
             higher = ranked[i]
             lower = ranked[i + 1]
 
-            # Check if lower ranked country has better IRR
-            if lower['metrics']['average_irr'] > higher['metrics']['average_irr']:
-                issues.append(
-                    f"{lower['country_name']} has higher IRR ({lower['metrics']['average_irr']:.1f}%) "
-                    f"than {higher['country_name']} ({higher['metrics']['average_irr']:.1f}%) "
-                    f"but ranked lower"
-                )
+            # Get metrics for comparison
+            higher_code = higher.get('country_code')
+            lower_code = lower.get('country_code')
+
+            if higher_code in metrics_by_country and lower_code in metrics_by_country:
+                higher_metrics = metrics_by_country[higher_code]
+                lower_metrics = metrics_by_country[lower_code]
+
+                # Check if lower ranked country has significantly better IRR
+                if lower_metrics['average_irr'] > higher_metrics['average_irr'] + 2.0:  # 2% threshold
+                    issues.append(
+                        f"{lower['country_name']} has significantly higher IRR "
+                        f"({lower_metrics['average_irr']:.1f}%) than "
+                        f"{higher['country_name']} ({higher_metrics['average_irr']:.1f}%) "
+                        f"but ranked lower - may be justified by other factors"
+                    )
 
         return {
             "verification_type": "basic_consistency_check",
@@ -519,7 +594,7 @@ class CountryComparisonOrchestrator:
             "issues": issues,
             "note": "This is basic rule-based verification. AI verification agent will provide comprehensive bias detection.",
             "recommendation": "Ranking appears consistent" if len(
-                issues) == 0 else "Ranking has potential inconsistencies"
+                issues) == 0 else "Ranking has potential inconsistencies that may be justified by risk factors"
         }
 
     def get_supported_countries(self) -> List[Dict[str, str]]:

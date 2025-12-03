@@ -1,0 +1,264 @@
+{
+  "USA": {
+    "country_code": "USA",
+    "country_name": "United States",
+    "representative_locations": [
+      {
+        "name": "West Texas Solar Belt",
+        "technology": "solar_pv",
+        "latitude": 31.99,
+        "longitude": -102.07,
+        "capacity_mw": 100,
+        "rationale": "Top US solar resource area with 5.58 kWh/m²/day G-pHI, 45 GW installed capacity, excellent grid access via ERCOT",
+        "selection_criteria": "Represents best-in-class US solar resource with mature market infrastructure"
+      },
+      {
+        "name": "Iowa Midwest Wind Corridor",
+        "technology": "onshore_wind",
+        "latitude": 42.0,
+        "longitude": -93.0,
+        "capacity_mw": 150,
+        "rationale": "Best US wind resource with 40-45% capacity factors, 12 GW state capacity, strong grid infrastructure",
+        "selection_criteria": "Represents premier US wind region with consistent high-quality resource"
+      }
+    ],
+    "market_characteristics": {
+      "total_installed_capacity_gw": 335,
+      "solar_capacity_gw": 145,
+      "wind_capacity_gw": 150,
+      "target_2030_gw": 500,
+      "policy_stability_rating": "high",
+      "grid_maturity_rating": "high",
+      "market_maturity": "very_high",
+      "key_strengths": [
+        "IRA provides 30% ITC + 10% bonuses through 2032",
+        "Corporate PPA market very active (Amazon 10 GW, Google 8 GW targets)",
+        "Large domestic market with high electricity demand",
+        "Mature supply chain and project development ecosystem"
+      ],
+      "key_challenges": [
+        "Grid interconnection delays 3-5 years (MISO/SPP)",
+        "Policy uncertainty post-2032 (ITC phase-down)",
+        "Land acquisition competitive in prime areas",
+        "Labor costs increased 30% (2022-2024)"
+      ]
+    },
+    "investment_context": {
+      "typical_project_irr_range": "8-15%",
+      "typical_lcoe_solar": "$40-80/MWh",
+      "typical_lcoe_wind": "$30-60/MWh",
+      "financing_availability": "excellent",
+      "offtake_market": "strong (corporate PPAs, merchant)"
+    }
+  },
+  "IND": {
+    "country_code": "IND",
+    "country_name": "India",
+    "representative_locations": [
+      {
+        "name": "Gujarat Solar Park Zone",
+        "technology": "solar_pv",
+        "latitude": 23.0,
+        "longitude": 72.0,
+        "capacity_mw": 100,
+        "rationale": "Best grid connectivity in India, 25 GW state capacity, dedicated 30 GW renewable zone with plug-and-play infrastructure",
+        "selection_criteria": "Represents India's most developed solar market with lowest execution risk"
+      },
+      {
+        "name": "Tamil Nadu Wind Corridor",
+        "technology": "onshore_wind",
+        "latitude": 11.0,
+        "longitude": 77.0,
+        "capacity_mw": 150,
+        "rationale": "Mature wind market with 18 GW state capacity, excellent wind resource, established supply chain ecosystem",
+        "selection_criteria": "Represents India's premier wind region with proven track record"
+      }
+    ],
+    "market_characteristics": {
+      "total_installed_capacity_gw": 180,
+      "solar_capacity_gw": 85,
+      "wind_capacity_gw": 45,
+      "target_2030_gw": 500,
+      "policy_stability_rating": "medium",
+      "grid_maturity_rating": "medium",
+      "market_maturity": "high",
+      "key_strengths": [
+        "PLI scheme offers 20% capital subsidy for domestic manufacturing",
+        "Large and growing domestic market (500 GW target by 2030)",
+        "SECI auctions provide transparent price discovery",
+        "Accelerated depreciation (40%) reduces tax burden"
+      ],
+      "key_challenges": [
+        "DISCOM payment delays 6-12 months (improving in Gujarat/Karnataka)",
+        "Grid curtailment issues in high renewable states (Rajasthan 8%)",
+        "Land acquisition challenges in some states",
+        "Permitting complexity (environment clearances 12-18 months)"
+      ]
+    },
+    "investment_context": {
+      "typical_project_irr_range": "10-14%",
+      "typical_lcoe_solar": "₹2.40-2.80/kWh ($0.029-0.034/kWh)",
+      "typical_lcoe_wind": "₹2.75-3.00/kWh ($0.033-0.036/kWh)",
+      "financing_availability": "good",
+      "offtake_market": "strong (SECI auctions, state tenders, C&I)"
+    }
+  },
+  "DEU": {
+    "country_code": "DEU",
+    "country_name": "Germany",
+    "representative_locations": [
+      {
+        "name": "Bavaria Solar Region",
+        "technology": "solar_pv",
+        "latitude": 48.0,
+        "longitude": 11.5,
+        "capacity_mw": 100,
+        "rationale": "Southern Germany strong solar resource, high rooftop penetration, good feed-in tariff support",
+        "selection_criteria": "Represents Germany's solar heartland with mature residential and commercial markets"
+      },
+      {
+        "name": "North Sea Offshore Wind Zone",
+        "technology": "onshore_wind",
+        "latitude": 54.0,
+        "longitude": 8.0,
+        "capacity_mw": 150,
+        "rationale": "World-class wind resource with 45-55% capacity factors, 40 GW planned North Sea expansion, zero-subsidy bids common",
+        "selection_criteria": "Represents Germany's premier wind region with globally competitive economics"
+      }
+    ],
+    "market_characteristics": {
+      "total_installed_capacity_gw": 148,
+      "solar_capacity_gw": 82,
+      "wind_capacity_gw": 71,
+      "target_2030_gw": 215,
+      "target_2045_gw": 400,
+      "policy_stability_rating": "very_high",
+      "grid_maturity_rating": "very_high",
+      "market_maturity": "very_high",
+      "key_strengths": [
+        "EEG 2023 provides stable 20-year feed-in tariffs",
+        "Offshore wind CfD model ensures revenue certainty",
+        "Highest renewable penetration globally (56% of generation in 2024)",
+        "Very strong grid infrastructure and market integration"
+      ],
+      "key_challenges": [
+        "Grid constraints (north-south transmission bottleneck)",
+        "Wind curtailment increasing (6.2 TWh in 2024, €1.1B compensation)",
+        "Onshore wind permitting slow despite reforms",
+        "High industrial electricity prices (€150-200/MWh)"
+      ]
+    },
+    "investment_context": {
+      "typical_project_irr_range": "6-10%",
+      "typical_lcoe_solar": "€51-64/MWh",
+      "typical_lcoe_wind_onshore": "€60-74/MWh",
+      "typical_lcoe_wind_offshore": "€55-62/MWh",
+      "financing_availability": "excellent",
+      "offtake_market": "moderate (EEG auctions, limited corporate PPAs)"
+    }
+  },
+  "BRA": {
+    "country_code": "BRA",
+    "country_name": "Brazil",
+    "representative_locations": [
+      {
+        "name": "Northeast Brazil Solar Region",
+        "technology": "solar_pv",
+        "latitude": -10.0,
+        "longitude": -40.0,
+        "capacity_mw": 100,
+        "rationale": "Excellent solar resource near equator, rapidly growing solar market",
+        "selection_criteria": "Represents Brazil's emerging solar opportunity with world-class resource"
+      },
+      {
+        "name": "Northeast Brazil Wind Corridor",
+        "technology": "onshore_wind",
+        "latitude": -5.0,
+        "longitude": -38.0,
+        "capacity_mw": 150,
+        "rationale": "Exceptional wind resource with 40-50% capacity factors, established wind market",
+        "selection_criteria": "Represents Brazil's proven wind leadership in Latin America"
+      }
+    ],
+    "market_characteristics": {
+      "total_installed_capacity_gw": 35,
+      "solar_capacity_gw": 15,
+      "wind_capacity_gw": 20,
+      "target_2030_gw": 80,
+      "policy_stability_rating": "medium",
+      "grid_maturity_rating": "medium",
+      "market_maturity": "medium",
+      "key_strengths": [
+        "Exceptional wind and solar resources (world-class capacity factors)",
+        "Large domestic market with growing electricity demand",
+        "Competitive auction system (contratos de diferenças)",
+        "Strong local content and manufacturing incentives"
+      ],
+      "key_challenges": [
+        "Policy uncertainty with government changes",
+        "Grid infrastructure needs expansion in remote areas",
+        "Financing costs higher than developed markets",
+        "Currency risk for international investors"
+      ]
+    },
+    "investment_context": {
+      "typical_project_irr_range": "12-18%",
+      "typical_lcoe_solar": "R$120-180/MWh ($25-37/MWh)",
+      "typical_lcoe_wind": "R$100-150/MWh ($20-30/MWh)",
+      "financing_availability": "good",
+      "offtake_market": "strong (regulated auctions, free market)"
+    }
+  },
+  "AUS": {
+    "country_code": "AUS",
+    "country_name": "Australia",
+    "representative_locations": [
+      {
+        "name": "Queensland Solar Region",
+        "technology": "solar_pv",
+        "latitude": -27.0,
+        "longitude": 153.0,
+        "capacity_mw": 100,
+        "rationale": "Outstanding solar resource (6+ kWh/m²/day), strong grid in populated areas",
+        "selection_criteria": "Represents Australia's exceptional solar opportunity with grid access"
+      },
+      {
+        "name": "South Australia Wind Zone",
+        "technology": "onshore_wind",
+        "latitude": -34.0,
+        "longitude": 138.0,
+        "capacity_mw": 150,
+        "rationale": "Excellent wind resource, high renewable penetration state (60%+ renewable)",
+        "selection_criteria": "Represents Australia's wind leadership and grid integration success"
+      }
+    ],
+    "market_characteristics": {
+      "total_installed_capacity_gw": 40,
+      "solar_capacity_gw": 25,
+      "wind_capacity_gw": 10,
+      "target_2030_gw": 82,
+      "policy_stability_rating": "medium",
+      "grid_maturity_rating": "high",
+      "market_maturity": "high",
+      "key_strengths": [
+        "World-class solar and wind resources (highest global capacity factors)",
+        "Advanced grid integration experience (SA 60%+ renewable)",
+        "Strong renewable energy targets (82% by 2030)",
+        "Developed financial markets and stable legal system"
+      ],
+      "key_challenges": [
+        "Policy uncertainty with government transitions",
+        "Grid connection challenges in remote areas",
+        "Market volatility in National Electricity Market (NEM)",
+        "Limited export opportunities (island nation)"
+      ]
+    },
+    "investment_context": {
+      "typical_project_irr_range": "8-12%",
+      "typical_lcoe_solar": "A$40-70/MWh ($27-47/MWh)",
+      "typical_lcoe_wind": "A$50-80/MWh ($33-53/MWh)",
+      "financing_availability": "excellent",
+      "offtake_market": "strong (corporate PPAs, NEM market)"
+    }
+  }
+}

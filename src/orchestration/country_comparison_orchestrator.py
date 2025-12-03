@@ -274,8 +274,8 @@ class CountryComparisonOrchestrator:
             # Create workflow orchestrator for this analysis
             orchestrator = WorkflowOrchestrator(llm_provider=self.llm_provider)
 
-            # Run analysis
-            result = await orchestrator.run_workflow(
+            # Run analysis using correct method name
+            result = await orchestrator.analyze_opportunity(
                 country=location_config['country'],
                 technology=location_config['technology'],
                 latitude=location_config['latitude'],

@@ -1,16 +1,61 @@
+# Germany Configuration
+
 country:
   code: "DEU"
   name: "Germany"
   currency: "EUR"
-  
-financial:
-  discount_rate: 0.06
-  corporate_tax_rate: 0.30
+  timezone: "Europe/Berlin"
 
-grid:
-  wholesale_price_usd_per_mwh: 45.0
+  # Germany-specific financial parameters
+  financial:
+    discount_rate: 0.06                    # Lower discount rate in Germany
+    corporate_tax_rate: 0.30               # German corporate tax (~30% combined)
+    inflation_rate: 0.02                   # ECB inflation target
 
-supported_technologies:
-  - solar_pv
-  - onshore_wind
-  - offshore_wind
+    # Germany uses straight-line depreciation
+    depreciation:
+      method: "Straight-line"
+      years: 20
+      annual_rate: 0.05
+
+  # Germany grid parameters
+  grid:
+    wholesale_price_usd_per_mwh: 45.0      # Convert from EUR (~40 EUR)
+    capacity_payment_usd_per_kw_year: 0.0  # Germany has no capacity market
+    interconnection_cost_usd_per_kw: 150.0
+    feed_in_tariff_eur_per_mwh: 50.0      # EEG feed-in tariff
+
+  # Germany regulatory environment
+  regulatory:
+    environmental_permitting_months: 18     # Strict environmental rules
+    construction_permitting_months: 9       # Building permits
+    land_lease_usd_per_acre_year: 1500.0   # Higher land costs in Europe
+
+    # Germany-specific: EEG (Renewable Energy Sources Act)
+    eeg_surcharge_eur_per_mwh: 3.7         # EEG levy
+    market_premium_model: true              # Germany uses market premium
+
+  # Technologies supported in Germany
+  supported_technologies:
+    - solar_pv
+    - onshore_wind
+    - offshore_wind                         # North Sea & Baltic Sea
+
+  # Germany-specific data sources
+  data_sources:
+    policy: "eeg_bnetza"                   # EEG + Bundesnetzagentur
+    resource_solar: "dwd_solar"            # German Weather Service
+    resource_wind: "dwd_wind"              # German Weather Service
+    offshore_wind: "bsh"                   # Federal Maritime and Hydrographic Agency
+    grid: "bnetza"                         # Bundesnetzagentur
+
+  # Regional variations
+  regions:
+    north_sea:
+      offshore_wind_bonus_eur_per_mwh: 5.0
+      water_depth_avg_m: 35
+    baltic_sea:
+      offshore_wind_bonus_eur_per_mwh: 3.0
+      water_depth_avg_m: 25
+    bavaria:
+      solar_irradiance_boost: 1.1          # Southern Germany gets more sun

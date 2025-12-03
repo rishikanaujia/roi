@@ -1,14 +1,73 @@
+# Onshore Wind Technology Configuration
+
 technology:
   code: "onshore_wind"
   name: "Onshore Wind"
   category: "wind"
-  
-financial:
-  capex_usd_per_kw: 1500.0
-  opex_usd_per_kw_year: 40.0
-  project_lifetime_years: 25
-  capacity_factor_range: [0.25, 0.45]
+  description: "Land-based wind turbines"
 
-validation:
-  lcoe_usd_per_mwh: [30, 90]
-  irr_percent: [5, 20]
+  # Onshore wind financial parameters
+  financial:
+    capex_usd_per_kw: 1500.0               # $1,500/kW typical
+    opex_usd_per_kw_year: 40.0             # Higher O&M than solar
+    project_lifetime_years: 25              # 25-30 year lifetime
+    capacity_factor_range: [0.25, 0.45]    # 25-45% depending on wind resource
+    degradation_rate_per_year: 0.002       # Less degradation than solar
+
+    # Wind-specific costs
+    turbine_cost_usd_per_kw: 1000.0        # Turbine itself
+    foundation_cost_usd_per_kw: 150.0      # Foundation/tower
+    electrical_cost_usd_per_kw: 200.0      # Electrical infrastructure
+    soft_costs_usd_per_kw: 150.0           # Development costs
+
+  # Onshore wind technical parameters
+  technical:
+    turbine_efficiency: 0.45                # 45% power coefficient (Betz limit ~59%)
+    availability: 0.95                      # 95% availability
+    hub_height_m: 100                       # Typical hub height
+    rotor_diameter_m: 120                   # Typical rotor diameter
+    cut_in_speed_m_s: 3.0                  # Min wind speed to generate
+    rated_speed_m_s: 12.0                  # Wind speed for rated power
+    cut_out_speed_m_s: 25.0                # Max wind speed (safety cutoff)
+    ramp_rate_percent_per_min: 50.0        # Can ramp fairly quickly
+
+  # Resource requirements
+  resource_requirements:
+    - name: "wind_speed"
+      unit: "m/s"
+      minimum: 6.0                         # Below 6 m/s = poor resource
+      optimal: 8.0                         # Above 8 m/s = excellent
+      measurement_height_m: 100            # At hub height
+      data_source: "global_wind_atlas"
+
+    - name: "wind_power_density"
+      unit: "W/m2"
+      minimum: 300                         # Class 3+ wind resource
+      optimal: 500                         # Class 5+ wind resource
+      data_source: "global_wind_atlas"
+
+    - name: "weibull_k"                    # Shape parameter
+      unit: "dimensionless"
+      typical_range: [1.5, 3.0]
+      data_source: "global_wind_atlas"
+
+    - name: "weibull_c"                    # Scale parameter
+      unit: "m/s"
+      data_source: "global_wind_atlas"
+
+  # LCOE calculation specifics
+  lcoe_calculation:
+    formula: "capex_annualized_plus_opex_divided_by_annual_energy"
+    factors:
+      - wake_losses                        # Wind turbines affect each other
+      - availability
+      - air_density_correction
+
+  # Validation ranges
+  validation:
+    lcoe_usd_per_mwh: [30, 90]             # Wind LCOE typically $30-90/MWh
+    irr_percent: [5, 20]                   # IRR typically 5-20%
+    capacity_factor: [0.25, 0.45]          # CF typically 25-45%
+
+  # Prompt template
+  prompt_template: "config/prompts/onshore_wind_analysis.md"

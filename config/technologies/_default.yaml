@@ -1,8 +1,26 @@
+# Default Technology Configuration
+# Base defaults for all technologies
+
 technology:
   code: "default"
   name: "Default Technology"
-  
-financial:
-  capex_usd_per_kw: 1000.0
-  opex_usd_per_kw_year: 10.0
-  project_lifetime_years: 25
+  category: "renewable"
+
+  # Default financial parameters
+  financial:
+    capex_usd_per_kw: 1000.0               # Capital expenditure
+    opex_usd_per_kw_year: 10.0             # Operating expenditure
+    project_lifetime_years: 25              # Project lifetime
+    capacity_factor_range: [0.15, 0.40]    # Expected capacity factor range
+    degradation_rate_per_year: 0.005       # 0.5% per year
+
+  # Default technical parameters
+  technical:
+    availability: 0.95                      # Uptime %
+    ramp_rate_percent_per_min: 10.0        # How fast can adjust output
+
+  # Default validation ranges
+  validation:
+    lcoe_usd_per_mwh: [20, 150]            # Expected LCOE range
+    irr_percent: [5, 25]                   # Expected IRR range
+    capacity_factor: [0.10, 0.60]          # Reasonable CF range

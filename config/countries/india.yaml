@@ -1,0 +1,78 @@
+country:
+  code: "IND"
+  name: "India"
+  currency: "INR"
+  currency_to_usd: 83.0  # ₹83 = $1 USD (approximate)
+
+financial:
+  discount_rate: 0.10  # Higher than developed markets
+  corporate_tax_rate: 0.25  # Effective rate with deductions
+
+  # Tax benefits
+  tax_holiday_years: 10  # 80-IA deduction
+  accelerated_depreciation: 0.40  # 40% WDV method
+
+grid:
+  wholesale_price_usd_per_mwh: 30.0  # ~₹2.50/kWh converted to USD
+  transmission_loss_percent: 4.5
+  must_run_status: true  # Renewable energy priority dispatch
+  grid_stability: "improving"
+
+regulatory:
+  environmental_clearance_required: true
+  land_acquisition: "challenging"  # Can be difficult
+  ppa_standard_duration_years: 25
+  open_access_available: true
+  renewable_purchase_obligation_percent: 10.5
+
+market:
+  market_type: "regulated_with_open_access"
+  exchanges:
+    - "IEX"  # Indian Energy Exchange
+    - "PXIL"  # Power Exchange India Limited
+  feed_in_tariff_available: true
+  net_metering_available: true
+  banking_facility_available: true
+
+# State-wise notes
+states:
+  gujarat:
+    code: "GJ"
+    good_for: ["solar_pv", "onshore_wind"]
+    notes: "Excellent solar resources, good wind in coastal areas"
+
+  rajasthan:
+    code: "RJ"
+    good_for: ["solar_pv"]
+    notes: "Best solar resources in India, large solar parks"
+
+  tamil_nadu:
+    code: "TN"
+    good_for: ["onshore_wind", "solar_pv"]
+    notes: "Best wind resources in India, strong RE policy"
+
+  maharashtra:
+    code: "MH"
+    good_for: ["onshore_wind", "solar_pv"]
+    notes: "Good wind resources in Western Ghats"
+
+  karnataka:
+    code: "KA"
+    good_for: ["solar_pv", "onshore_wind"]
+    notes: "Strong industrial base, good RE support"
+
+supported_technologies:
+  - solar_pv
+  - onshore_wind
+  - offshore_wind  # Emerging
+  - hydro
+  - biomass
+
+notes:
+  - "India targeting 500 GW renewable capacity by 2030"
+  - "Strong central and state-level policy support"
+  - "Payment security mechanisms in place"
+  - "Grid connectivity improving but varies by region"
+  - "Land acquisition can be challenging - use solar parks where possible"
+  - "ALMM compliance required for solar projects"
+  - "Domestic content requirements may apply"

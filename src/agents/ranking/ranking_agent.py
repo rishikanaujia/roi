@@ -48,6 +48,7 @@ class RankingAgent:
             f"(weights: Financial 40%, Resource 25%, Policy 20%, Market 15%)"
         )
 
+
     async def rank_countries(
             self,
             country_reports: Dict[str, Dict[str, Any]]
@@ -101,6 +102,254 @@ class RankingAgent:
             self.logger.error(f"AI ranking failed: {str(e)}")
             # Fallback to basic ranking
             return self._create_fallback_ranking(country_reports)
+
+    async def rank_countries_with_feedback(
+                self,
+                country_reports: Dict[str, Dict[str, Any]],
+                previous_ranking: Optional[Dict[str, Any]] = None,
+                verification_feedback: Optional[Dict[str, Any]] = None,
+                iteration: int = 1
+        ) -> Dict[str, Any]:
+            """
+            Rank countries with optional feedback from verification agent.
+
+            This method improves ranking based on verification feedback.
+
+            Args:
+                country_reports: Dictionary of country analysis reports
+                previous_ranking: Previous ranking attempt (if any)
+                verification_feedback: Feedback from verification agent
+                iteration: Current iteration number
+
+            Returns:
+                Ranking with detailed justification
+            """
+            self.logger.info(
+                f"Ranking countries (iteration {iteration})"
+                f"{' with feedback' if verification_feedback else ''}"
+            )
+
+            try:
+                # Build prompt with or without feedback
+                if verification_feedback and previous_ranking:
+                    prompt = self._build_feedback_ranking_prompt(
+                        country_reports,
+                        previous_ranking,
+                        verification_feedback,
+                        iteration
+                    )
+                else:
+                    # First attempt - no feedback
+                    prompt = self._build_ranking_prompt(country_reports)
+
+                # Get GPT-4 ranking
+                messages = [
+                    {
+                        "role": "system",
+                        "content": self._get_system_prompt_with_feedback()
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+
+                response = await self.llm_provider.generate_completion(
+                    messages,
+                    temperature=0.2,  # Low temperature for consistent, objective analysis
+                    max_tokens=2000
+                )
+
+                # Parse JSON response
+                ranking = self._parse_json_response(response)
+
+                # Add metadata
+                ranking['methodology'] = self._get_methodology_description()
+                ranking['ranking_type'] = 'ai_powered'
+                ranking['weights'] = self.weights
+                ranking['iteration'] = iteration
+                ranking['improved_from_feedback'] = verification_feedback is not None
+
+                self.logger.info(
+                    f"AI ranking complete (iteration {iteration}): "
+                    f"{len(ranking['ranked_countries'])} countries ranked"
+                )
+
+                return ranking
+
+            except Exception as e:
+                self.logger.error(f"AI ranking failed (iteration {iteration}): {str(e)}")
+                # Fallback to basic ranking
+                return self._create_fallback_ranking(country_reports)
+
+    def _get_system_prompt_with_feedback(self) -> str:
+            """Get system prompt that accepts feedback."""
+            return """You are an expert renewable energy investment analyst with 20 years of experience ranking countries for institutional investors. Your rankings must be:
+
+    1. **OBJECTIVE**: Based solely on data provided, no country bias
+    2. **JUSTIFIED**: Every ranking decision explained with specific numbers
+    3. **COMPREHENSIVE**: Consider financial, resource, policy, and market factors
+    4. **TRANSPARENT**: Show your reasoning for why Country A ranks above Country B
+    5. **ACTIONABLE**: Provide insights investors can act on
+    6. **RESPONSIVE TO FEEDBACK**: If verification feedback is provided, address ALL issues raised
+
+    You rank countries using these weighted criteria:
+    - Financial Performance (40%): IRR, LCOE, NPV, project economics
+    - Resource Quality (25%): Capacity factors, GHI/wind speed, resource reliability
+    - Policy Stability (20%): Incentive stability, regulatory clarity, government support
+    - Market Maturity (15%): Grid infrastructure, supply chain, development ecosystem
+
+    **CRITICAL WHEN FEEDBACK PROVIDED:**
+    - Address EVERY issue raised by verification
+    - Adjust rankings if better metrics were ranked lower
+    - Provide stronger data-driven justification
+    - Reference specific numbers from the feedback
+    - Explain why previous ranking was incorrect and how you've corrected it
+
+    You MUST provide specific justification comparing countries directly."""
+
+    def _build_feedback_ranking_prompt(
+                self,
+                country_reports: Dict[str, Dict[str, Any]],
+                previous_ranking: Dict[str, Any],
+                verification_feedback: Dict[str, Any],
+                iteration: int
+        ) -> str:
+            """
+            Build ranking prompt with verification feedback.
+
+            Args:
+                country_reports: Country analysis reports
+                previous_ranking: Previous ranking attempt
+                verification_feedback: Feedback from verification
+                iteration: Current iteration number
+
+            Returns:
+                Complete prompt string with feedback
+            """
+            prompt = f"""This is ITERATION {iteration} of country ranking.
+
+    VERIFICATION FEEDBACK FROM PREVIOUS RANKING (Iteration {iteration - 1}):
+
+    {'=' * 70}
+    PREVIOUS RANKING WAS: {"REJECTED" if not verification_feedback.get('verified') else "ACCEPTED"}
+    {'=' * 70}
+
+    Summary: {verification_feedback.get('summary', 'No summary provided')}
+
+    CRITICAL ISSUES TO ADDRESS:
+    """
+
+            # Add issues from verification
+            if verification_feedback.get('issues_found'):
+                for i, issue in enumerate(verification_feedback['issues_found'], 1):
+                    prompt += f"""
+    Issue {i} [{issue['severity'].upper()}]:
+      Problem: {issue['issue']}
+      You must: {issue['recommendation']}
+    """
+
+            # Add checks that failed
+            if verification_feedback.get('checks_performed'):
+                prompt += "\n\nCHECKS THAT FAILED:\n"
+                for check in verification_feedback['checks_performed']:
+                    if check['status'] == 'failed':
+                        prompt += f"  ✗ {check['check_type'].upper()}: {check['finding']}\n"
+
+            prompt += f"""
+    {'=' * 70}
+
+    PREVIOUS RANKING (that was rejected):
+    """
+
+            # Show previous ranking
+            for country in previous_ranking['ranked_countries']:
+                prompt += f"""
+    Rank {country['rank']}: {country['country_name']}
+      Score: {country['overall_score']}
+      Justification: {country['justification']}
+    """
+
+            prompt += f"""
+    {'=' * 70}
+
+    NOW, CREATE A NEW RANKING that addresses ALL the issues above.
+
+    You have access to the same country data:
+    """
+
+            # Add country data (same as original prompt)
+            for country_code, report in country_reports.items():
+                metrics = report['aggregate_metrics']
+                market = report['market_characteristics']
+                investment = report['investment_context']
+
+                prompt += f"""
+    {'=' * 70}
+    {report['country_name']} ({country_code}) - COMPLETE DATA
+    {'=' * 70}
+
+    FINANCIAL METRICS (40% weight):
+    - Average IRR: {metrics['average_irr']:.2f}%
+    - Average LCOE: ${metrics['average_lcoe']:.2f}/MWh
+    - Average NPV: ${metrics['average_npv']:,.0f}
+    - Average Capacity Factor: {metrics['average_capacity_factor'] * 100:.1f}%
+
+    POLICY ENVIRONMENT (20% weight):
+    - Policy Stability: {market['policy_stability_rating']}
+    - Typical IRR Range: {investment['typical_project_irr_range']}
+
+    MARKET CHARACTERISTICS (15% weight):
+    - Grid Maturity: {market['grid_maturity_rating']}
+    - Market Maturity: {market['market_maturity']}
+    - Financing: {investment['financing_availability']}
+
+    RESOURCE QUALITY (25% weight):
+    - Capacity Factor: {metrics['average_capacity_factor'] * 100:.1f}%
+    """
+
+            prompt += f"""
+    {'=' * 70}
+
+    INSTRUCTIONS FOR NEW RANKING:
+
+    1. **ADDRESS ALL VERIFICATION ISSUES**: Fix every problem raised
+    2. **USE SPECIFIC NUMBERS**: Reference actual metrics in justifications
+    3. **COMPARE DIRECTLY**: Explain why A > B with data (e.g., "USA's LCOE of $61/MWh vs Germany's $85/MWh")
+    4. **JUSTIFY CAREFULLY**: If lower financial metrics ranked higher, explain with risk factors
+    5. **BE OBJECTIVE**: No country bias - purely data-driven
+
+    OUTPUT FORMAT (JSON only, no markdown):
+    {{
+      "ranked_countries": [
+        {{
+          "rank": 1,
+          "country_code": "XXX",
+          "country_name": "Country Name",
+          "overall_score": 85.5,
+          "component_scores": {{
+            "financial_score": 88,
+            "resource_score": 82,
+            "policy_score": 90,
+            "market_score": 78
+          }},
+          "justification": "Detailed justification with SPECIFIC NUMBERS comparing to other countries and ADDRESSING FEEDBACK",
+          "key_differentiators": [
+            "Specific differentiator with data",
+            "Another differentiator with numbers"
+          ],
+          "feedback_addressed": "How this ranking addresses the verification issues raised"
+        }}
+      ],
+      "ranking_summary": "Summary explaining how this ranking differs from previous iteration and addresses all feedback",
+      "methodology_applied": "Brief description of how weights were applied"
+    }}
+
+    REMEMBER: This ranking will be verified again. Make it bulletproof!
+    """
+
+            return prompt
+
 
     def _get_system_prompt(self) -> str:
         """Get system prompt for AI ranking."""

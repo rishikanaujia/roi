@@ -93,6 +93,67 @@ class VerificationAgent:
             # Return basic verification as fallback
             return self._create_fallback_verification(ranking, country_reports)
 
+    def extract_actionable_feedback(
+            self,
+            verification_result: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Extract actionable feedback for ranking agent.
+
+        Args:
+            verification_result: Full verification result
+
+        Returns:
+            Structured feedback for ranking improvement
+        """
+        if verification_result.get('verified', False):
+            # No feedback needed - ranking passed
+            return {
+                "needs_improvement": False,
+                "message": "Ranking passed verification - no changes needed"
+            }
+
+        # Extract critical feedback
+        feedback = {
+            "needs_improvement": True,
+            "summary": verification_result.get('summary', ''),
+            "critical_issues": [],
+            "moderate_issues": [],
+            "specific_actions": []
+        }
+
+        # Categorize issues by severity
+        for issue in verification_result.get('issues_found', []):
+            issue_summary = {
+                "severity": issue['severity'],
+                "problem": issue['issue'],
+                "action": issue['recommendation']
+            }
+
+            if issue['severity'] == 'critical':
+                feedback['critical_issues'].append(issue_summary)
+            else:
+                feedback['moderate_issues'].append(issue_summary)
+
+            feedback['specific_actions'].append(issue['recommendation'])
+
+        # Extract failed checks
+        feedback['failed_checks'] = [
+            {
+                "type": check['check_type'],
+                "finding": check['finding']
+            }
+            for check in verification_result.get('checks_performed', [])
+            if check['status'] == 'failed'
+        ]
+
+        self.logger.info(
+            f"Extracted feedback: {len(feedback['critical_issues'])} critical, "
+            f"{len(feedback['moderate_issues'])} moderate issues"
+        )
+
+        return feedback
+
     def _get_system_prompt(self) -> str:
         """Get system prompt for verification."""
         return """You are an expert auditor specializing in validating investment ranking methodologies for institutional investors. Your job is to verify that country rankings are:

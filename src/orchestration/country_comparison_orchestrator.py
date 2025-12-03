@@ -120,10 +120,17 @@ class CountryComparisonOrchestrator:
         country_reports = self._aggregate_by_country(location_analyses, validated_countries)
 
         # Step 5: Rank countries using AI (or fallback if no LLM)
-        ranking = await self._create_ranking(country_reports)
+        #ranking = await self._create_ranking(country_reports)
 
         # Step 6: Verify ranking using AI (or fallback if no LLM)
-        verification = await self._create_verification(ranking, country_reports)
+        #verification = await self._create_verification(ranking, country_reports)
+
+        # Step 5 & 6: Rank countries with iterative verification
+        ranking_result = await self._create_ranking_with_verification(country_reports)
+
+        # Extract final ranking and verification
+        ranking = ranking_result['final_ranking']
+        verification = ranking_result['final_verification']
 
         elapsed_time = (datetime.now() - start_time).total_seconds()
 
@@ -139,12 +146,15 @@ class CountryComparisonOrchestrator:
             "country_reports": country_reports,
             "ranking": ranking,
             "verification": verification,
+            "ranking_iterations": ranking_result.get('all_iterations', []),
+            "improvement_summary": ranking_result.get('improvement_summary', {}),
+            "ranking_statistics": ranking_result.get('statistics', {}),
             "methodology": {
                 "description": "Multi-location analysis with representative sites per country",
                 "location_selection": "Each country analyzed using 2 representative locations (solar + wind)",
                 "aggregation": "Country metrics averaged across all locations",
                 "ranking_criteria": "Financial performance (40%), Resource quality (25%), Policy stability (20%), Market maturity (15%)",
-                "bias_prevention": "Verification agent validates ranking objectivity"
+                "bias_prevention": "Iterative verification with feedback loop - up to 3 ranking attempts until verification passes"
             }
         }
 
@@ -439,6 +449,71 @@ class CountryComparisonOrchestrator:
             # No LLM provider - use basic ranking
             self.logger.info("No LLM provider - using basic algorithmic ranking")
             return self._create_basic_ranking(country_reports)
+
+    async def _create_ranking_with_verification(
+            self,
+            country_reports: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Create ranking with iterative verification loop.
+
+        Args:
+            country_reports: Country analysis reports
+
+        Returns:
+            Complete result with final ranking, verification, and all iterations
+        """
+        if self.llm_provider:
+            # Use iterative ranking with verification loop
+            try:
+                from src.orchestration.iterative_ranking_orchestrator import IterativeRankingOrchestrator
+
+                self.logger.info("Using Iterative Ranking with Verification Loop...")
+
+                # Create iterative orchestrator
+                iterative_orchestrator = IterativeRankingOrchestrator(
+                    llm_provider=self.llm_provider,
+                    max_iterations=3  # Allow up to 3 attempts
+                )
+
+                # Run iterative ranking
+                result = await iterative_orchestrator.rank_with_verification_loop(
+                    country_reports
+                )
+
+                # Log results
+                stats = result['statistics']
+                self.logger.info(
+                    f"Iterative ranking completed: {stats['total_iterations']} iterations, "
+                    f"{'VERIFIED ✓' if stats['final_verified'] else 'UNVERIFIED ✗'}"
+                )
+
+                return result
+
+            except Exception as e:
+                self.logger.error(f"Iterative ranking failed: {str(e)}, using fallback")
+                # Fallback to basic ranking
+                ranking = self._create_basic_ranking(country_reports)
+                verification = self._create_basic_verification(ranking, country_reports)
+                return {
+                    "final_ranking": ranking,
+                    "final_verification": verification,
+                    "all_iterations": [],
+                    "improvement_summary": {"message": "Fallback ranking used"},
+                    "statistics": {"total_iterations": 1, "final_verified": False}
+                }
+        else:
+            # No LLM provider - use basic ranking + verification
+            self.logger.info("No LLM provider - using basic ranking + verification")
+            ranking = self._create_basic_ranking(country_reports)
+            verification = self._create_basic_verification(ranking, country_reports)
+            return {
+                "final_ranking": ranking,
+                "final_verification": verification,
+                "all_iterations": [],
+                "improvement_summary": {"message": "Basic ranking used (no LLM)"},
+                "statistics": {"total_iterations": 1, "final_verified": False}
+            }
 
     def _create_basic_ranking(
             self,
